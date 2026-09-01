@@ -2,7 +2,7 @@
 # ==============================================================================
 # Axiom VPS Manager — Modern, Secure & High-Performance Installer
 # Version: 1.0.0
-# License: MIT
+# License: GPL-3.0
 # Repository: https://github.com/pamidu1540/axiom-vps-manager
 # ==============================================================================
 

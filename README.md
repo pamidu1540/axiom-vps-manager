@@ -4,7 +4,7 @@
 **Modern, Secure, High-Performance VPS Tunneling & Management Platform**
 
 [![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.0)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=for-the-badge)](LICENSE)
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
 [![Ubuntu 22.04 | 24.04](https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04%20LTS-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com)
 [![Debian 12 | 13](https://img.shields.io/badge/Debian-12%20|%2013-red.svg?style=for-the-badge&logo=debian)](https://debian.org)
@@ -127,7 +127,7 @@ graph TD
 
 ## 📜 License
 
-This project is open-source software licensed under the [MIT License](LICENSE).
+This project is open-source software licensed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
 
 ---
 
