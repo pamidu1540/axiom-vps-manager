@@ -71,6 +71,9 @@ def main():
     # Bandwidth Stats
     subparsers.add_parser("bandwidth", help="Display network interface bandwidth metrics")
 
+    # Uninstaller
+    subparsers.add_parser("uninstall", help="Completely remove Axiom VPS Manager")
+
     args = parser.parse_args()
 
     if not args.command or args.command == "menu":
@@ -153,6 +156,17 @@ def main():
         print(f"   Received : {stats['rx_bytes']} bytes")
         print(f"   Sent     : {stats['tx_bytes']} bytes")
         print(f"   Total    : {stats['total_gb']} GB")
+
+    elif args.command == "uninstall":
+        import subprocess
+        import os
+        uninstall_script = "/opt/axiom/uninstall.sh"
+        if not os.path.exists(uninstall_script):
+            uninstall_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uninstall.sh")
+        if os.path.exists(uninstall_script):
+            subprocess.run(["bash", uninstall_script])
+        else:
+            print("❌ uninstall.sh not found.")
 
 
 if __name__ == "__main__":
