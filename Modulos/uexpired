@@ -1,13 +1,25 @@
-#!/bin/bash
-fun_exp () {
-(
-for _user in $(awk -F: '$3>=1000 {print $1}' /etc/passwd | grep -v nobody); do
-   if [[ $(chage -l $_user |grep "Account expires" |awk -F ': ' '{print $2}') != never ]]; then
-       [[ $(date +%s) -gt $(date '+%s' -d"$(chage -l $_user |grep "Account expires" |awk -F ': ' '{print $2}')") ]] && userexp=$(expr $userexp + 1)
-   fi
-   [[ userexp == [0-9] ]] && userexp=0$userexp
-done
+#!/usr/bin/env bash
+# Axiom VPS Manager — Expired Users Counter
+set -euo pipefail
+
+database="/root/usuarios.db"
+touch "$database"
+datenow=$(date +%s)
+userexp=0
+
+while read -r user_entry; do
+    [[ -z "$user_entry" ]] && continue
+    user=$(echo "$user_entry" | awk '{print $1}')
+    if id "$user" >/dev/null 2>&1; then
+        expdate=$(chage -l "$user" 2>/dev/null | awk -F: '/Account expires/{print $2}' | xargs || echo "never")
+        if [[ "$expdate" != "never" && -n "$expdate" ]]; then
+            expsec=$(date +%s --date="$expdate" 2>/dev/null || echo "$datenow")
+            if (( datenow >= expsec )); then
+                userexp=$((userexp + 1))
+            fi
+        fi
+    fi
+done < "$database"
+
+mkdir -p /etc/VPSManager
 echo "$userexp" > /etc/VPSManager/Exp
-) &
-}
-fun_exp > /dev/null 2>&1

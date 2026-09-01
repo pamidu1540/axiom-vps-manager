@@ -1,34 +1,49 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Axiom VPS Manager — Connection Limiter Daemon
+set -euo pipefail
 
-clear
 database="/root/usuarios.db"
-fun_multilogin() {
-	(
-		while read user; do
-			[[ $(grep -wc "$user" $database) != '0' ]] && limit="$(grep -w $user $database | cut -d' ' -f2)" || limit='1'
-			conssh="$(ps -u $user | grep sshd | wc -l)"
-			[[ "$conssh" -gt "$limit" ]] && {
-				pkill -u $user
-			}
-			[[ -e /etc/openvpn/openvpn-status.log ]] && {
-				ovp="$(grep -E ,"$user", /etc/openvpn/openvpn-status.log | wc -l)"
-				[[ "$ovp" -gt "$limit" ]] && {
-					pidokill=$(($limit - $ovp))
-					listpid=$(grep -E ,"$user", /etc/openvpn/openvpn-status.log | cut -d "," -f3 | head -n $pidokill)
-					while read ovpids; do
-						(
-							telnet localhost 7505 <<-EOF
-								kill $ovpids
-							EOF
-						) &>/dev/null &
-					done <<<"$listpid"
-				}
-			}
-		done <<<"$(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)"
-	) &
+touch "$database"
+
+prune_excess_ssh() {
+    local user="$1"
+    local limit="$2"
+
+    # Get PIDs of user's active SSH sessions (sorted oldest to newest)
+    mapfile -t ssh_pids < <(pgrep -u "$user" -f "sshd:" 2>/dev/null || pgrep -u "$user" sshd 2>/dev/null || true)
+    local active_count="${#ssh_pids[@]}"
+
+    if (( active_count > limit )); then
+        local excess=$(( active_count - limit ))
+        # Terminate only the most recent excess sessions
+        for (( i=0; i<excess; i++ )); do
+            pid_to_kill="${ssh_pids[$(( active_count - 1 - i ))]}"
+            kill -9 "$pid_to_kill" 2>/dev/null || true
+        done
+    fi
 }
-while true; do
-    echo 'Checking...'
-	fun_multilogin > /dev/null 2>&1
-	sleep 15s
-done
+
+check_all_limits() {
+    [[ ! -f "$database" ]] && return 0
+
+    while read -r entry; do
+        [[ -z "$entry" ]] && continue
+        user=$(echo "$entry" | awk '{print $1}')
+        limit=$(echo "$entry" | awk '{print $2}')
+        [[ -z "$limit" || "$limit" -lt 1 ]] && limit=1
+
+        if id "$user" >/dev/null 2>&1; then
+            prune_excess_ssh "$user" "$limit"
+        fi
+    done < "$database"
+}
+
+# If run directly as daemon loop
+if [[ "${1:-}" == "--once" ]]; then
+    check_all_limits
+else
+    while true; do
+        check_all_limits
+        sleep 10
+    done
+fi

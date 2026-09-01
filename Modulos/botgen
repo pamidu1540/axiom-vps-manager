@@ -1,21 +1,25 @@
-#!/bin/bash
-[[ $(screen -list| grep -c 'bot_gen') == '0' ]] && {
+#!/usr/bin/env bash
+# Axiom VPS Manager — Key Generator Telegram Bot Activator
+set -euo pipefail
+
+if [[ $(screen -list 2>/dev/null | grep -c 'bot_gen') -eq 0 ]]; then
     clear
-    echo -e "\E[44;1;37m     ㅤ🐉ㅤDRAGON VPS MANAGER TELE BOT ACTIVATIONㅤ🐉ㅤ     \E[0m"
+    echo -e "\E[44;1;37m        ⚡ Axiom Key Generator Bot Activation ⚡        \E[0m\n"
+    echo -ne "\033[1;32m◇ Enter Telegram Bot Token from @BotFather\033[1;37m: "; read -r token
     echo ""
-    echo -ne "\033[1;32m◇ INFORM YOUR BOT TOKEN FROM @BotFather\033[1;37m: "; read token
-    echo ""
-    echo -ne "\033[1;32m◇ INFORM YOUR TELEGRAM ID\033[1;37m: "; read idtelegram
+    echo -ne "\033[1;32m◇ Enter Admin Telegram Chat ID\033[1;37m: "; read -r idtelegram
+    
+    mkdir -p /etc/VPSManager
     cd /etc/VPSManager
-    screen -dmS bot_gen ./botgerador $token $idtelegram > /dev/null 2>&1
-    [[ $(grep -wc "bot_gen" /etc/autostart) = '0' ]] && {
-                echo -e "ps x | grep 'bot_gen' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_gen ./botgerador $token $idtelegram && cd $HOME" >>/etc/autostart
-            } || {
-                sed -i '/bot_gen/d' /etc/autostart
-                echo -e "ps x | grep 'bot_gen' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_gen ./botgerador $token $idtelegram && cd $HOME" >>/etc/autostart
-            }  
-    clear && echo "◇ BOT ACTIVATED!"
-} || {
-    screen -r -S "bot_gen" -X quit
-    clear && echo "◇ BOT DISABLED!"
-}
+    screen -dmS bot_gen ./botgerador "$token" "$idtelegram" > /dev/null 2>&1 || true
+    
+    touch /etc/autostart
+    sed -i '/bot_gen/d' /etc/autostart 2>/dev/null || true
+    echo "ps x | grep 'bot_gen' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_gen ./botgerador '$token' '$idtelegram' && cd \$HOME" >> /etc/autostart
+    
+    clear && echo -e "\033[1;32m[✓] Generator Bot Activated successfully!\033[0m"
+else
+    screen -r -S "bot_gen" -X quit 2>/dev/null || true
+    sed -i '/bot_gen/d' /etc/autostart 2>/dev/null || true
+    clear && echo -e "\033[1;31m[✓] Generator Bot Deactivated.\033[0m"
+fi

@@ -1,42 +1,64 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# Axiom VPS Manager — Expired Accounts Purge Engine
+set -euo pipefail
+
+database="/root/usuarios.db"
+touch "$database"
 datenow=$(date +%s)
-remove_ovp () {
-if [[ -e /etc/debian_version ]]; then
-	GROUPNAME=nogroup
-fi
-user="$1"
-cd /etc/openvpn/easy-rsa/
-./easyrsa --batch revoke $user
-./easyrsa gen-crl
-rm -rf pki/reqs/$user.req
-rm -rf pki/private/$user.key
-rm -rf pki/issued/$user.crt
-rm -rf /etc/openvpn/crl.pem
-cp /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn/crl.pem
-chown nobody:$GROUPNAME /etc/openvpn/crl.pem
-[[ -e $HOME/$user.ovpn ]] && rm $HOME/$user.ovpn > /dev/null 2>&1
-[[ -e /var/www/html/openvpn/$user.zip ]] && rm /var/www/html/openvpn/$user.zip > /dev/null 2>&1
-} > /dev/null 2>&1
-echo -e "\E[44;1;37m◇User         ◇Date        ◇status       ◇Action   \E[0m"
-echo ""
-for user in $(awk -F: '{print $1}' /etc/passwd); do
-	expdate=$(chage -l $user|awk -F: '/Account expires/{print $2}')
-	echo $expdate|grep -q never && continue
-	datanormal=$(date -d"$expdate" '+%d/%m/%Y')
-	tput setaf 3 ; tput bold ; printf '%-15s%-17s%s' $user $datanormal ; tput sgr0
-	expsec=$(date +%s --date="$expdate")
-	diff=$(echo $datenow - $expsec|bc -l)
-	tput setaf 2 ; tput bold
-	echo $diff|grep -q ^\- && echo "◇ VALID NOT REMOVED" && continue
-	tput setaf 1 ; tput bold
-	echo "◇ USER WAS REMOVED"
-	pkill -f $user
-	userdel --force $user
-	grep -v ^$user[[:space:]] /root/usuarios.db > /tmp/ph ; cat /tmp/ph > /root/usuarios.db
-	if [[ -e /etc/openvpn/server.conf ]]; then
-		remove_ovp $user
-	fi
+
+clear
+echo -e "\E[44;1;37m Username         Expiry Date       Status                   \E[0m\n"
+
+remove_ovp() {
+    local user="$1"
+    local groupname="nogroup"
+    if [[ -d /etc/openvpn/easy-rsa ]]; then
+        (
+            cd /etc/openvpn/easy-rsa/
+            ./easyrsa --batch revoke "$user" 2>/dev/null || true
+            ./easyrsa gen-crl 2>/dev/null || true
+            rm -f "pki/reqs/$user.req" "pki/private/$user.key" "pki/issued/$user.crt"
+            cp pki/crl.pem /etc/openvpn/crl.pem 2>/dev/null || true
+            chown "nobody:$groupname" /etc/openvpn/crl.pem 2>/dev/null || true
+        )
+    fi
+    rm -f "$HOME/$user.ovpn"
+    rm -f "/var/www/html/openvpn/$user.zip" 2>/dev/null || true
+}
+
+mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
+
+for user in "${users_list[@]}"; do
+    [[ -z "$user" ]] && continue
+    if ! id "$user" >/dev/null 2>&1; then
+        continue
+    fi
+
+    expdate=$(chage -l "$user" 2>/dev/null | awk -F: '/Account expires/{print $2}' | xargs || echo "never")
+    if [[ "$expdate" == "never" || -z "$expdate" ]]; then
+        printf ' %-16s %-17s \033[1;33mNever Expiring\033[0m\n' "$user" "Never"
+        continue
+    fi
+
+    datanormal=$(date -d "$expdate" '+%d/%m/%Y' 2>/dev/null || echo "$expdate")
+    expsec=$(date +%s --date="$expdate" 2>/dev/null || echo "$datenow")
+
+    if (( datenow >= expsec )); then
+        printf ' %-16s %-17s \033[1;31mExpired — Removed\033[0m\n' "$user" "$datanormal"
+        pkill -u "$user" 2>/dev/null || true
+        userdel -f "$user" 2>/dev/null || true
+        
+        tmp_db=$(mktemp)
+        grep -v "^${user}[[:space:]]" "$database" > "$tmp_db" || true
+        mv "$tmp_db" "$database"
+        
+        [[ -e /etc/openvpn/server.conf ]] && remove_ovp "$user"
+    else
+        printf ' %-16s %-17s \033[1;32mActive (Valid)\033[0m\n' "$user" "$datanormal"
+    fi
 done
-echo '0' > /etc/VPSManager/Exp
-tput sgr0 
+
+mkdir -p /etc/VPSManager
+echo "0" > /etc/VPSManager/Exp
 echo ""
+read -r -p "Press Enter to return to menu..."
