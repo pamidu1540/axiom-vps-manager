@@ -32,7 +32,11 @@ def test_backup_creation_and_listing():
 
 
 def test_backup_restore():
-    with tempfile.TemporaryDirectory() as tmp_backup_dir, tempfile.TemporaryDirectory() as tmp_target_dir, tempfile.TemporaryDirectory() as tmp_extract_dir:
+    with (
+        tempfile.TemporaryDirectory() as tmp_backup_dir,
+        tempfile.TemporaryDirectory() as tmp_target_dir,
+        tempfile.TemporaryDirectory() as tmp_extract_dir,
+    ):
         # Create mock target files
         file1 = os.path.join(tmp_target_dir, "usuarios.db")
         with open(file1, "w", encoding="utf-8") as f:

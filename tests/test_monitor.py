@@ -41,19 +41,21 @@ def test_listening_ports():
 
 
 def test_bandwidth_vnstat_parsing():
-    mock_vnstat_json = json.dumps({
-        "interfaces": [
-            {
-                "name": "eth0",
-                "traffic": {
-                    "total": {
-                        "rx": 1073741824,  # 1 GB
-                        "tx": 2147483648,  # 2 GB
-                    }
-                },
-            }
-        ]
-    })
+    mock_vnstat_json = json.dumps(
+        {
+            "interfaces": [
+                {
+                    "name": "eth0",
+                    "traffic": {
+                        "total": {
+                            "rx": 1073741824,  # 1 GB
+                            "tx": 2147483648,  # 2 GB
+                        }
+                    },
+                }
+            ]
+        }
+    )
 
     with patch("subprocess.check_output", return_value=mock_vnstat_json):
         stats = BandwidthMonitor.get_interface_stats("eth0")
@@ -71,9 +73,11 @@ def test_bandwidth_proc_net_dev_fallback():
   eth0: 5000000    500    0    0    0     0          0         0  10000000   1000    0    0    0     0       0          0
 """
     m = mock_open(read_data=mock_proc_net)
-    with patch("subprocess.check_output", side_effect=FileNotFoundError), patch(
-        "os.path.exists", return_value=True
-    ), patch("builtins.open", m):
+    with (
+        patch("subprocess.check_output", side_effect=FileNotFoundError),
+        patch("os.path.exists", return_value=True),
+        patch("builtins.open", m),
+    ):
         stats = BandwidthMonitor.get_interface_stats("eth0")
         assert stats["rx_bytes"] == 5000000
         assert stats["tx_bytes"] == 10000000

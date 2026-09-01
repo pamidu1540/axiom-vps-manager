@@ -109,7 +109,9 @@ def sandbox_fs() -> Generator[SandboxFS]:
 
         # Populate sample meminfo
         with open(proc_meminfo, "w", encoding="utf-8") as f:
-            f.write("MemTotal:        4194304 kB\nMemAvailable:    2097152 kB\nSwapTotal:       1048576 kB\nSwapFree:        1048576 kB\n")
+            f.write(
+                "MemTotal:        4194304 kB\nMemAvailable:    2097152 kB\nSwapTotal:       1048576 kB\nSwapFree:        1048576 kB\n"
+            )
 
         # Initial profile file
         with open(profile_file, "w", encoding="utf-8") as f:
@@ -171,6 +173,3 @@ def windows_chmod_compat():
             yield
     else:
         yield
-
-
-

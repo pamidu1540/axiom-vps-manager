@@ -103,11 +103,13 @@ class SystemMonitor:
                     if ":" in local_addr:
                         port_str = local_addr.rsplit(":", 1)[1]
                         if port_str.isdigit():
-                            ports.append({
-                                "protocol": proto,
-                                "port": int(port_str),
-                                "address": local_addr,
-                            })
+                            ports.append(
+                                {
+                                    "protocol": proto,
+                                    "port": int(port_str),
+                                    "address": local_addr,
+                                }
+                            )
         except Exception:
             pass
         return ports

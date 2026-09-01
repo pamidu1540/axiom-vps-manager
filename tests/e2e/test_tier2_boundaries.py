@@ -269,11 +269,13 @@ class TestTask08ExpCleanerBoundaries:
 
     def test_expcleaner_all_users_expired(self, sandbox_fs):
         past_epoch = int((datetime.datetime.now() - datetime.timedelta(days=2)).timestamp())
-        sandbox_fs.write_trial_db([
-            ("exp1", past_epoch, 1),
-            ("exp2", past_epoch, 1),
-            ("exp3", past_epoch, 1),
-        ])
+        sandbox_fs.write_trial_db(
+            [
+                ("exp1", past_epoch, 1),
+                ("exp2", past_epoch, 1),
+                ("exp3", past_epoch, 1),
+            ]
+        )
         now_epoch = int(datetime.datetime.now().timestamp())
         expired = [u for u in sandbox_fs.read_trial_db() if u["epoch"] <= now_epoch]
         assert len(expired) == 3
@@ -458,17 +460,13 @@ class TestTask13NloadBoundaries:
 
     def test_vnstat_terabyte_counter_overflow(self):
         tb_bytes = 100 * (1024**4)  # 100 TB
-        mock_json = json.dumps({
-            "interfaces": [{"traffic": {"total": {"rx": tb_bytes, "tx": tb_bytes}}}]
-        })
+        mock_json = json.dumps({"interfaces": [{"traffic": {"total": {"rx": tb_bytes, "tx": tb_bytes}}}]})
         with patch("subprocess.check_output", return_value=mock_json):
             stats = BandwidthMonitor.get_interface_stats()
             assert stats["total_bytes"] == 2 * tb_bytes
 
     def test_vnstat_zero_bytes(self):
-        mock_json = json.dumps({
-            "interfaces": [{"traffic": {"total": {"rx": 0, "tx": 0}}}]
-        })
+        mock_json = json.dumps({"interfaces": [{"traffic": {"total": {"rx": 0, "tx": 0}}}]})
         with patch("subprocess.check_output", return_value=mock_json):
             stats = BandwidthMonitor.get_interface_stats()
             assert stats["total_gb"] == 0.0
@@ -866,7 +864,7 @@ class TestTask26SenhaRootBoundaries:
         assert len(p1) == 0
 
     def test_root_password_shell_special_chars(self):
-        special = 'R00t$ecr3t"\'`\\!'
+        special = "R00t$ecr3t\"'`\\!"
         assert len(special) >= 8
         assert "`" in special
 

@@ -68,10 +68,12 @@ class TestTier3Combinations:
         # 1. Standard user and trial user coexist
         sandbox_fs.write_usuarios_db([("perm_user", 2)])
         now_epoch = int(datetime.datetime.now().timestamp())
-        sandbox_fs.write_trial_db([
-            ("trial_active", now_epoch + 3600, 1),
-            ("trial_expired", now_epoch - 300, 1),
-        ])
+        sandbox_fs.write_trial_db(
+            [
+                ("trial_active", now_epoch + 3600, 1),
+                ("trial_expired", now_epoch - 300, 1),
+            ]
+        )
 
         # 2. Sweep expired trial users
         active_trials = []
@@ -279,11 +281,13 @@ class TestTier3Combinations:
     # --------------------------------------------------------------------------
     def test_combination_10_multi_client_limiter_daemon_pruning(self, sandbox_fs):
         # Database with 3 users having limits 1, 2, 3
-        sandbox_fs.write_usuarios_db([
-            ("user_single", 1),
-            ("user_double", 2),
-            ("user_triple", 3),
-        ])
+        sandbox_fs.write_usuarios_db(
+            [
+                ("user_single", 1),
+                ("user_double", 2),
+                ("user_triple", 3),
+            ]
+        )
 
         limits = sandbox_fs.read_usuarios_db()
 

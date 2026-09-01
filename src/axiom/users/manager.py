@@ -130,12 +130,12 @@ class UserManager:
             "expiry_date": expiry_date,
         }
 
-    def create_user(
-        self, username: str, password: str | None = None, days: int = 30, limit: int = 1
-    ) -> dict[str, str]:
+    def create_user(self, username: str, password: str | None = None, days: int = 30, limit: int = 1) -> dict[str, str]:
         """Creates a system user with nologin shell and an expiration date."""
         if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore.")
+            raise ValueError(
+                f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore."
+            )
         if days < 1:
             raise ValueError("Validity days must be a positive integer.")
         if limit < 1 or limit > 999:
@@ -172,7 +172,10 @@ class UserManager:
                     check=False,
                 )
                 ovpn_dest = f"/root/{username}.ovpn"
-                with open("/etc/openvpn/client-common.txt", encoding="utf-8") as f_in, open(ovpn_dest, "w", encoding="utf-8") as f_out:
+                with (
+                    open("/etc/openvpn/client-common.txt", encoding="utf-8") as f_in,
+                    open(ovpn_dest, "w", encoding="utf-8") as f_out,
+                ):
                     f_out.write(f_in.read() + "\n")
                     f_out.write("<ca>\n")
                     ca_path = "/etc/openvpn/easy-rsa/pki/ca.crt"
@@ -205,7 +208,9 @@ class UserManager:
             username = f"trial{secrets.randbelow(9000) + 1000}"
 
         if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore.")
+            raise ValueError(
+                f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore."
+            )
         if minutes < 1:
             raise ValueError("Trial duration must be a positive integer.")
         if limit < 1 or limit > 999:

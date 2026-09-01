@@ -102,13 +102,15 @@ class BandwidthMonitor:
                             metrics = parts[1].split()
                             rx_b = int(metrics[0])
                             tx_b = int(metrics[8])
-                            results.append({
-                                "interface": if_name,
-                                "rx_bytes": rx_b,
-                                "tx_bytes": tx_b,
-                                "total_bytes": rx_b + tx_b,
-                                "total_gb": round((rx_b + tx_b) / (1024**3), 2),
-                            })
+                            results.append(
+                                {
+                                    "interface": if_name,
+                                    "rx_bytes": rx_b,
+                                    "tx_bytes": tx_b,
+                                    "total_bytes": rx_b + tx_b,
+                                    "total_gb": round((rx_b + tx_b) / (1024**3), 2),
+                                }
+                            )
             except Exception:
                 pass
         return results

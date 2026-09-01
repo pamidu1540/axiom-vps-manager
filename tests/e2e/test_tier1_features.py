@@ -39,10 +39,7 @@ class TestTask01CriarUsuario:
             res = mgr.create_user("alice", password="SecurePassword123!", days=30, limit=2)
             assert res["username"] == "alice"
             assert res["limit"] == "2"
-            assert (
-                res["expiry_date"]
-                == (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
-            )
+            assert res["expiry_date"] == (datetime.date.today() + datetime.timedelta(days=30)).strftime("%Y-%m-%d")
             assert mock_run.call_count >= 1
             # Check db updated
             db = sandbox_fs.read_usuarios_db()
@@ -543,14 +540,16 @@ class TestTask13Nload:
             assert stats["total_gb"] == 0.0
 
     def test_bandwidth_monitor_json_parsing(self):
-        mock_json = json.dumps({
-            "interfaces": [
-                {
-                    "name": "eth0",
-                    "traffic": {"total": {"rx": 1073741824, "tx": 2147483648}},
-                }
-            ]
-        })
+        mock_json = json.dumps(
+            {
+                "interfaces": [
+                    {
+                        "name": "eth0",
+                        "traffic": {"total": {"rx": 1073741824, "tx": 2147483648}},
+                    }
+                ]
+            }
+        )
         with patch("subprocess.check_output", return_value=mock_json):
             stats = BandwidthMonitor.get_interface_stats()
             assert stats["rx_bytes"] == 1073741824

@@ -226,3 +226,68 @@ def test_cli_backup_list_command(capsys):
         cli_main()
         captured = capsys.readouterr()
         assert "Available Backups" in captured.out
+
+
+# ==============================================================================
+# 16. Verification of All 30 Menu Commands & Symlink Infrastructure
+# ==============================================================================
+def test_all_30_menu_commands_exist_and_linked():
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    modulos_dir = os.path.join(repo_root, "Modulos")
+    install_sh = os.path.join(repo_root, "install.sh")
+    uninstall_sh = os.path.join(repo_root, "uninstall.sh")
+    menu_sh = os.path.join(modulos_dir, "menu")
+
+    # 30 Menu Actions & Supporting Modules
+    required_modules = [
+        "criarusuario",  # Option 01
+        "criarteste",  # Option 02
+        "remover",  # Option 03
+        "sshmonitor",  # Option 04
+        "mudardata",  # Option 05
+        "alterarlimite",  # Option 06
+        "alterarsenha",  # Option 07
+        "expcleaner",  # Option 08
+        "infousers",  # Option 09
+        "conexao",  # Option 10
+        "speedtest",  # Option 11
+        "banner",  # Option 12
+        "otimizar",  # Option 14
+        "userbackup",  # Option 15
+        "limiter",  # Option 16
+        "badvpn",  # Option 17
+        "detalhes",  # Option 18
+        "addhost",  # Option 20
+        "delhost",  # Option 21
+        "reiniciarsistema",  # Option 22
+        "reiniciarservicos",  # Option 23
+        "blockt",  # Option 24
+        "botssh",  # Option 25
+        "senharoot",  # Option 26
+        "attscript",  # Option 28
+        "delscript",  # Option 29
+        "uexpired",  # cron utility
+        "verifatt",  # update verification
+    ]
+
+    for mod in required_modules:
+        mod_path = os.path.join(modulos_dir, mod)
+        assert os.path.isfile(mod_path), f"Module '{mod}' missing in Modulos/"
+
+    # Check menu has PATH export
+    with open(menu_sh, encoding="utf-8", errors="ignore") as f:
+        menu_content = f.read()
+    assert 'export PATH="/opt/axiom/Modulos' in menu_content
+
+    # Check install.sh symlinks all modules
+    with open(install_sh, encoding="utf-8", errors="ignore") as f:
+        install_content = f.read()
+    assert 'for mod in "$INSTALL_DIR/Modulos"/*' in install_content
+    assert 'ln -sf "$mod" "/usr/local/bin/$mod_name"' in install_content
+    assert 'ln -sf "$mod" "/bin/$mod_name"' in install_content
+
+    # Check uninstall.sh cleans symlinks
+    with open(uninstall_sh, encoding="utf-8", errors="ignore") as f:
+        uninstall_content = f.read()
+    assert "rm -f /etc/profile.d/axiom.sh" in uninstall_content
+    assert "/usr/local/bin/$bin" in uninstall_content

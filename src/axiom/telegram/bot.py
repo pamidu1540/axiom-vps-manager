@@ -42,7 +42,6 @@ except ImportError:
             self.keyboard = keyboard
 
 
-
 class AxiomTelegramBot:
     def __init__(self, token: str, admin_id: int | None = None):
         self.token = token
