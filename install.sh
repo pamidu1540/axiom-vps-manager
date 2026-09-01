@@ -146,13 +146,11 @@ if [[ -d "$INSTALL_DIR/Modulos" ]]; then
     done
 fi
 
-# Main entrypoints & aliases
+# Main entrypoint (Axiom CLI & TUI)
 ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/axiom
 ln -sf "$INSTALL_DIR/Modulos/menu" /bin/axiom 2>/dev/null || true
 ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/axiom 2>/dev/null || true
-ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/menu
-ln -sf "$INSTALL_DIR/Modulos/menu" /bin/menu 2>/dev/null || true
-ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/menu 2>/dev/null || true
+rm -f /usr/local/bin/menu /bin/menu /usr/bin/menu 2>/dev/null || true
 
 if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
     chmod 755 "$INSTALL_DIR/uninstall.sh"
@@ -188,6 +186,6 @@ fi
 echo -e "\n${CLR_GREEN}======================================================${CLR_RESET}"
 echo -e "${CLR_GREEN}${CLR_BOLD}  ✔ Axiom VPS Manager Installed Successfully!         ${CLR_RESET}"
 echo -e "${CLR_GREEN}======================================================${CLR_RESET}\n"
-echo -e "${CLR_YELLOW}Main CLI Command :${CLR_RESET} ${CLR_CYAN}axiom${CLR_RESET} or ${CLR_CYAN}menu${CLR_RESET}"
+echo -e "${CLR_YELLOW}Main CLI Command :${CLR_RESET} ${CLR_CYAN}axiom${CLR_RESET}"
 echo -e "${CLR_YELLOW}Public IP        :${CLR_RESET} ${CLR_CYAN}${PUBLIC_IP}${CLR_RESET}"
 echo -e "${CLR_YELLOW}Repository       :${CLR_RESET} ${CLR_CYAN}${GITHUB_REPO_URL}${CLR_RESET}\n"
