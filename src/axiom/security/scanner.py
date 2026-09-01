@@ -20,7 +20,7 @@ class SecurityScanner:
                 {
                     "severity": "HIGH",
                     "title": "Plaintext Password Directory Found",
-                    "detail": "/etc/VPSManager/senha contains plaintext credential files. Run axiom user migrate to purge.",
+                    "detail": "/etc/VPSManager/senha contains plaintext credential files. Purge password directory.",
                 }
             )
             status = "WARNING"
@@ -40,17 +40,31 @@ class SecurityScanner:
                     )
 
         # 3. Check for exposed backup files in webroot
-        if os.path.exists("/var/www/html/backup/backup.vps"):
+        if os.path.exists("/var/www/html/backup/backup.vps") or os.path.exists("/var/www/html/backup.vps"):
             findings.append(
                 {
                     "severity": "CRITICAL",
                     "title": "Unauthenticated Backup File in Webroot",
-                    "detail": "/var/www/html/backup/backup.vps is exposed to the public internet. Remove immediately.",
+                    "detail": "Backup archive is exposed to the public webroot (/var/www/html/). Remove immediately.",
                 }
             )
             status = "FAILED"
 
-        # 4. Check firewall status
+        # 4. Check for leaked static stunnel.pem keys
+        leaked_paths = ["/stunnel.pem", "/etc/stunnel/stunnel.pem", "/opt/axiom/stunnel.pem"]
+        for p in leaked_paths:
+            if os.path.exists(p):
+                findings.append(
+                    {
+                        "severity": "HIGH",
+                        "title": "Static RSA Key Found",
+                        "detail": f"Static or leaked certificate/key found at {p}. Use dynamically generated certificates.",
+                    }
+                )
+                if status != "FAILED":
+                    status = "WARNING"
+
+        # 5. Check firewall status
         nft_status = "INACTIVE"
         try:
             res = subprocess.run(["nft", "list", "tables"], capture_output=True, text=True, check=False)

@@ -29,14 +29,32 @@ criarteste() {
     fi
 
     usuario="test$((RANDOM % 8999 + 1000))"
-    senha=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10 || echo "$((RANDOM % 899999 + 100000))")
+    senha=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 10 || echo "Ax$(date +%s%N | tail -c 8)")
     limite='1'
     tempo='1'
     tuserdate=$(date '+%Y-%m-%d' -d "+1 days")
     
     useradd -M -N -s /bin/false "$usuario" -e "$tuserdate" >/dev/null 2>&1
     echo "$usuario:$senha" | chpasswd
-    echo "$usuario $limite" >> /root/usuarios.db
+
+    # Atomic update to main database
+    touch /root/usuarios.db
+    tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
+    grep -v "^${usuario}[[:space:]]" /root/usuarios.db > "$tmp_db" || true
+    echo "$usuario $limite" >> "$tmp_db"
+    mv "$tmp_db" /root/usuarios.db
+    chmod 644 /root/usuarios.db
+
+    # Register in dedicated trial database
+    now_epoch=$(date +%s)
+    exp_epoch=$(( now_epoch + tempo * 3600 ))
+    mkdir -p /etc/VPSManager
+    touch /etc/VPSManager/trial_users.db
+    tmp_trial=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+    grep -v "^${usuario}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_trial" || true
+    echo "$usuario $exp_epoch $limite" >> "$tmp_trial"
+    mv "$tmp_trial" /etc/VPSManager/trial_users.db
+    chmod 644 /etc/VPSManager/trial_users.db
 
     cleanup_script="/etc/VPSManager/userteste/${usuario}.sh"
     mkdir -p /etc/VPSManager/userteste
@@ -44,9 +62,18 @@ criarteste() {
 #!/usr/bin/env bash
 pkill -u "$usuario" 2>/dev/null || true
 userdel -f "$usuario" 2>/dev/null || true
-tmp=\$(mktemp)
-grep -v "^${usuario}[[:space:]]" /root/usuarios.db > "\$tmp" || true
-mv "\$tmp" /root/usuarios.db
+if [[ -f /root/usuarios.db ]]; then
+    tmp=\$(mktemp /root/usuarios.db.XXXXXX)
+    grep -v "^${usuario}[[:space:]]" /root/usuarios.db > "\$tmp" || true
+    mv "\$tmp" /root/usuarios.db
+    chmod 644 /root/usuarios.db 2>/dev/null || true
+fi
+if [[ -f /etc/VPSManager/trial_users.db ]]; then
+    tmp_t=\$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+    grep -v "^${usuario}[[:space:]]" /etc/VPSManager/trial_users.db > "\$tmp_t" || true
+    mv "\$tmp_t" /etc/VPSManager/trial_users.db
+    chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
+fi
 rm -f "$cleanup_script"
 EOF
     chmod +x "$cleanup_script"
@@ -54,7 +81,7 @@ EOF
 
     echo "${callback_query_from_id}" >> lista
 
-    ip_addr="$(cat /etc/IP 2>/dev/null || curl -s -4 ifconfig.me || echo '127.0.0.1')"
+    ip_addr="$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me || echo '127.0.0.1')"
     response="✅ <b>Trial Account Created</b>\n\n"
     response+="Server: <code>$ip_addr</code>\n"
     response+="Username: <code>$usuario</code>\n"

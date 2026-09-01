@@ -1,9 +1,32 @@
 #!/usr/bin/env bash
+# Axiom VPS Manager — User Removal Module
 set -euo pipefail
 
-remove_ovp () {
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
+remove_ovp() {
     local user="$1"
     local groupname="nogroup"
+    if ! grep -q "^nogroup:" /etc/group 2>/dev/null; then
+        groupname="nobody"
+    fi
+
     if [[ -d /etc/openvpn/easy-rsa ]]; then
         (
             cd /etc/openvpn/easy-rsa/
@@ -11,10 +34,11 @@ remove_ovp () {
             ./easyrsa gen-crl 2>/dev/null || true
             rm -f "pki/reqs/$user.req" "pki/private/$user.key" "pki/issued/$user.crt"
             cp pki/crl.pem /etc/openvpn/crl.pem 2>/dev/null || true
+            chmod 644 /etc/openvpn/crl.pem 2>/dev/null || true
             chown "nobody:$groupname" /etc/openvpn/crl.pem 2>/dev/null || true
         )
     fi
-    rm -f "$HOME/$user.ovpn"
+    rm -f "$HOME/$user.ovpn" "/root/$user.ovpn"
     rm -f "/var/www/html/openvpn/$user.zip" 2>/dev/null || true
 }
 
@@ -55,16 +79,38 @@ if [[ "$resp" == "1" ]]; then
     fi
 
     if [[ -n "$target_user" ]]; then
+        # System account safety guard (UID >= 1000 and non-root)
+        user_uid=$(id -u "$target_user" 2>/dev/null || echo "0")
+        if (( user_uid < 1000 )) || [[ "$target_user" == "root" ]]; then
+            echo -e "\n\033[1;31m[!] Security violation: Cannot delete system account '$target_user' (UID: $user_uid).\033[0m\n"
+            exit 1
+        fi
+
         pkill -u "$target_user" 2>/dev/null || true
         userdel -f "$target_user" 2>/dev/null || true
         
-        # Safe database update without static /tmp collisions
-        tmp_db=$(mktemp)
+        # Safe same-mount atomic database update
+        tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
         grep -v "^${target_user}[[:space:]]" "$database" > "$tmp_db" || true
         mv "$tmp_db" "$database"
+        chmod 644 "$database"
+
+        # Cleanup trial database if present
+        if [[ -f /etc/VPSManager/trial_users.db ]]; then
+            tmp_t=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+            grep -v "^${target_user}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_t" || true
+            mv "$tmp_t" /etc/VPSManager/trial_users.db
+            chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
+        fi
+        rm -f "/etc/VPSManager/userteste/${target_user}.sh"
         
         [[ -e /etc/openvpn/server.conf ]] && remove_ovp "$target_user"
-        echo -e "\n\033[1;32m[✓] User $target_user successfully removed.\033[0m"
+
+        if type axiom_audit >/dev/null 2>&1; then
+            axiom_audit "USER_DELETE" "$target_user" "single"
+        fi
+
+        echo -e "\n\033[1;32m[✓] User '$target_user' successfully removed.\033[0m"
     else
         echo -e "\n\033[1;31m[!] Invalid user selection.\033[0m"
     fi
@@ -75,14 +121,32 @@ elif [[ "$resp" == "2" ]]; then
         while read -r user_entry; do
             u=$(echo "$user_entry" | awk '{print $1}')
             [[ -z "$u" ]] && continue
+            
+            # System account safety guard (UID >= 1000 and non-root)
+            u_uid=$(id -u "$u" 2>/dev/null || echo "0")
+            if (( u_uid < 1000 )) || [[ "$u" == "root" ]]; then
+                echo -e "\033[1;33m[!] Skipping protected system user '$u' (UID: $u_uid)\033[0m"
+                continue
+            fi
+
             pkill -u "$u" 2>/dev/null || true
             userdel -f "$u" 2>/dev/null || true
             [[ -e /etc/openvpn/server.conf ]] && remove_ovp "$u"
+            rm -f "/etc/VPSManager/userteste/${u}.sh"
         done < "$database"
         
         > "$database"
+        if [[ -f /etc/VPSManager/trial_users.db ]]; then
+            > /etc/VPSManager/trial_users.db
+        fi
+
+        if type axiom_audit >/dev/null 2>&1; then
+            axiom_audit "USER_DELETE_ALL" "all" "batch"
+        fi
+
         echo -e "\n\033[1;32m[✓] All managed users removed.\033[0m"
     else
         echo -e "\n\033[1;33mCancelled.\033[0m"
     fi
 fi
+read -r -p "Press Enter to return to menu..."

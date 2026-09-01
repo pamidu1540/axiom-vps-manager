@@ -6,8 +6,7 @@ scor='\033[0m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 SCOLOR='\033[0m'
-[[ $(awk -F" " '{print $2}' /usr/lib/licence) == "@DRAGON_VPS_MANAGER" ]] && {
-	ram1=$(free -h | grep -i mem | awk {'print $2'})
+ram1=$(free -h | grep -i mem | awk {'print $2'})
 	ram2=$(free -h | grep -i mem | awk {'print $4'})
 	ram3=$(free -h | grep -i mem | awk {'print $3'})
 	uso=$(top -bn1 | awk '/Cpu/ { cpu = "" 100 - $8 "%" }; END { print cpu }')
@@ -433,9 +432,11 @@ SCOLOR='\033[0m'
 				echo -e "\033[1;32mSETTING PORT DROPBEAR!\033[0m"
 				echo ""
 				fun_bar 'fun_ports'
-				grep -v "^PasswordAuthentication yes" /etc/ssh/sshd_config >/tmp/passlogin && mv /tmp/passlogin /etc/ssh/sshd_config
+				_tmppass=$(mktemp)
+				grep -v "^PasswordAuthentication yes" /etc/ssh/sshd_config > "$_tmppass" && mv "$_tmppass" /etc/ssh/sshd_config
 				echo "PasswordAuthentication yes" >>/etc/ssh/sshd_config
-				grep -v "^PermitTunnel yes" /etc/ssh/sshd_config >/tmp/ssh && mv /tmp/ssh /etc/ssh/sshd_config
+				_tmpssh=$(mktemp)
+				grep -v "^PermitTunnel yes" /etc/ssh/sshd_config > "$_tmpssh" && mv "$_tmpssh" /etc/ssh/sshd_config
 				echo "PermitTunnel yes" >>/etc/ssh/sshd_config
 				echo ""
 				echo -e "\033[1;32mFINISHING INSTALLATION !\033[0m"
@@ -811,11 +812,6 @@ SCOLOR='\033[0m'
 				clear
 
 				opnp=$(cat /etc/openvpn/server.conf | grep "port" | awk {'print $2'})
-				[[ -d /var/www/html/openvpn ]] && {
-					ovpnweb=$(echo -e "\033[1;32m♦ ")
-				} || {
-					ovpnweb=$(echo -e "\033[1;31m○ ")
-				}
 				if grep "duplicate-cn" /etc/openvpn/server.conf >/dev/null; then
 					mult=$(echo -e "\033[1;32m♦ ")
 				else
@@ -827,7 +823,7 @@ SCOLOR='\033[0m'
 				echo ""
 				echo -e "\033[1;31m[\033[1;36m1\033[1;31m] \033[1;37m• \033[1;33mCHANGE PORT"
 				echo -e "\033[1;31m[\033[1;36m2\033[1;31m] \033[1;37m• \033[1;33mREMOVE OPENVPN"
-				echo -e "\033[1;31m[\033[1;36m3\033[1;31m] \033[1;37m• \033[1;33mOVPN VIA LINK $ovpnweb"
+				echo -e "\033[1;31m[\033[1;36m3\033[1;31m] \033[1;37m• \033[1;33mCLIENT CONFIG PATH"
 				echo -e "\033[1;31m[\033[1;36m4\033[1;31m] \033[1;37m• \033[1;33mMULTILOGIN OVPN $mult"
 				echo -e "\033[1;31m[\033[1;36m5\033[1;31m] \033[1;37m• \033[1;33mCHANGE HOST DNS"
 				echo -e "\033[1;31m[\033[1;36m0\033[1;31m] \033[1;37m• \033[1;33mCOME BACK"
@@ -926,67 +922,17 @@ SCOLOR='\033[0m'
 					}
 					;;
 				3)
-					[[ -d /var/www/html/openvpn ]] && {
-						clear
-						fun_spcr() {
-							apt-get remove apache2 -y
-							apt-get autoremove -y
-							rm -rf /var/www/html/openvpn
-						}
-						function aguarde() {
-							helice() {
-								fun_spcr >/dev/null 2>&1 &
-								tput civis
-								while [ -d /proc/$! ]; do
-									for i in / - \\ \|; do
-										sleep .1
-										echo -ne "\e[1D$i"
-									done
-								done
-								tput cnorm
-							}
-							echo -ne "\033[1;31mDISABLING\033[1;32m.\033[1;33m.\033[1;31m. \033[1;33m"
-							helice
-							echo -e "\e[1DOk"
-						}
-						aguarde
-						sleep 2
-						fun_openvpn
-					} || {
-						clear
-						fun_apchon() {
-							apt-get install apache2 zip -y
-							sed -i "s/Listen 80/Listen 81/g" /etc/apache2/ports.conf
-							service apache2 restart
-							[[ ! -d /var/www/html ]] && {
-								mkdir /var/www/html
-							}
-							[[ ! -d /var/www/html/openvpn ]] && {
-								mkdir /var/www/html/openvpn
-							}
-							touch /var/www/html/openvpn/index.html
-							chmod -R 755 /var/www
-							/etc/init.d/apache2 restart
-						}
-						function aguarde2() {
-							helice() {
-								fun_apchon >/dev/null 2>&1 &
-								tput civis
-								while [ -d /proc/$! ]; do
-									for i in / - \\ \|; do
-										sleep .1
-										echo -ne "\e[1D$i"
-									done
-								done
-								tput cnorm
-							}
-							echo -ne "\033[1;32mACTIVATING\033[1;32m.\033[1;33m.\033[1;31m. \033[1;33m"
-							helice
-							echo -e "\e[1DOk"
-						}
-						aguarde2
-						fun_openvpn
-					}
+					clear
+					echo -e "\E[44;1;37m          OPENVPN CLIENT CONFIG           \E[0m\n"
+					if [[ -f /etc/openvpn/client-common.txt ]]; then
+						echo -e "\033[1;32m[✓] Client configuration profile is located at: \033[1;33m$HOME/VPSMANAGER.ovpn\033[0m"
+						echo -e "\033[1;33m[!] Download securely via SFTP / SCP:\033[0m"
+						echo -e "    scp root@<server_ip>:$HOME/VPSMANAGER.ovpn .\n"
+					else
+						echo -e "\033[1;31m[!] OpenVPN is not yet configured.\033[0m\n"
+					fi
+					read -r -p "Press Enter to return..."
+					fun_openvpn
 					;;
 				4)
 					if grep "duplicate-cn" /etc/openvpn/server.conf >/dev/null; then
@@ -1020,7 +966,8 @@ SCOLOR='\033[0m'
 					else
 						clear
 						fun_multoff() {
-							grep -v "^duplicate-cn" /etc/openvpn/server.conf >/tmp/tmpass && mv /tmp/tmpass /etc/openvpn/server.conf
+							_tmppass=$(mktemp)
+							grep -v "^duplicate-cn" /etc/openvpn/server.conf > "$_tmppass" && mv "$_tmppass" /etc/openvpn/server.conf
 							echo "duplicate-cn" >>/etc/openvpn/server.conf
 							sleep 1.5s
 							service openvpn restart >/dev/null
@@ -1229,10 +1176,16 @@ SCOLOR='\033[0m'
 			# Adquirindo easy-rsa
 			echo ""
 			fun_dep() {
-				wget -O ~/EasyRSA-3.0.1.tgz "https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/EasyRSA-3.0.1.tgz" 2>/dev/null || true
-				[[ ! -e $HOME/EasyRSA-3.0.1.tgz ]] && {
-					wget -O ~/EasyRSA-3.0.1.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.1/EasyRSA-3.0.1.tgz" 2>/dev/null || true
-				}
+				if [[ -f /opt/axiom/Install/EasyRSA-3.0.1.tgz ]]; then
+					cp /opt/axiom/Install/EasyRSA-3.0.1.tgz ~/EasyRSA-3.0.1.tgz
+				elif [[ -f Install/EasyRSA-3.0.1.tgz ]]; then
+					cp Install/EasyRSA-3.0.1.tgz ~/EasyRSA-3.0.1.tgz
+				elif [[ ! -e $HOME/EasyRSA-3.0.1.tgz ]]; then
+					wget -O ~/EasyRSA-3.0.1.tgz "https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/EasyRSA-3.0.1.tgz" 2>/dev/null || true
+					[[ ! -e $HOME/EasyRSA-3.0.1.tgz ]] && {
+						wget -O ~/EasyRSA-3.0.1.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.1/EasyRSA-3.0.1.tgz" 2>/dev/null || true
+					}
+				fi
 				tar xzf ~/EasyRSA-3.0.1.tgz -C ~/
 				mv ~/EasyRSA-3.0.1/ /etc/openvpn/
 				mv /etc/openvpn/EasyRSA-3.0.1/ /etc/openvpn/easy-rsa/
@@ -1246,7 +1199,8 @@ SCOLOR='\033[0m'
 				./easyrsa build-client-full VPSMANAGER nopass
 				./easyrsa gen-crl
 				cp pki/ca.crt pki/private/ca.key pki/dh.pem pki/issued/server.crt pki/private/server.key /etc/openvpn/easy-rsa/pki/crl.pem /etc/openvpn
-				chown nobody:$GROUPNAME /etc/openvpn/crl.pem
+				chown nobody:$GROUPNAME /etc/openvpn/crl.pem 2>/dev/null || true
+				chmod 644 /etc/openvpn/crl.pem 2>/dev/null || true
 				openvpn --genkey --secret /etc/openvpn/ta.key
 				# Generando server.conf
 				echo "port $porta
@@ -1297,8 +1251,8 @@ ifconfig-pool-persist ipp.txt" >/etc/openvpn/server.conf
 				esac
 				echo "keepalive 10 120
 float
-cipher AES-256-CBC
-comp-lzo yes
+data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305
+data-ciphers-fallback AES-256-GCM
 user nobody
 group $GROUPNAME
 persist-key
@@ -1308,9 +1262,9 @@ management localhost 7505
 verb 3
 crl-verify crl.pem
 client-to-client
-client-cert-not-required
+verify-client-cert none
 username-as-common-name
-plugin $(find /usr -type f -name 'openvpn-plugin-auth-pam.so') login
+plugin $(find /usr -type f -name 'openvpn-plugin-auth-pam.so' 2>/dev/null | head -n1) login
 duplicate-cn" >>/etc/openvpn/server.conf
 				sed -i '/\<net.ipv4.ip_forward\>/c\net.ipv4.ip_forward=1' /etc/sysctl.conf
 				if ! grep -q "\<net.ipv4.ip_forward\>" /etc/sysctl.conf; then
@@ -1322,23 +1276,20 @@ duplicate-cn" >>/etc/openvpn/server.conf
 exit 0' >$RCLOCAL
 				fi
 				chmod +x $RCLOCAL
-				iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP
-				sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
+				iptables -t nat -C POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP
+				grep -q "POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL 2>/dev/null || sed -i "1 a\iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -j SNAT --to $IP" $RCLOCAL
 				if pgrep firewalld; then
 					firewall-cmd --zone=public --add-port=$porta/$PROTOCOL
 					firewall-cmd --zone=trusted --add-source=10.8.0.0/24
 					firewall-cmd --permanent --zone=public --add-port=$porta/$PROTOCOL
 					firewall-cmd --permanent --zone=trusted --add-source=10.8.0.0/24
 				fi
-				if iptables -L -n | grep -qE 'REJECT|DROP'; then
-					iptables -I INPUT -p $PROTOCOL --dport $porta -j ACCEPT
-					iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT
-					iptables -F
-					iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-					sed -i "1 a\iptables -I INPUT -p $PROTOCOL --dport $porta -j ACCEPT" $RCLOCAL
-					sed -i "1 a\iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT" $RCLOCAL
-					sed -i "1 a\iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
-				fi
+				iptables -C INPUT -p $PROTOCOL --dport $porta -j ACCEPT 2>/dev/null || iptables -I INPUT -p $PROTOCOL --dport $porta -j ACCEPT
+				iptables -C FORWARD -s 10.8.0.0/24 -j ACCEPT 2>/dev/null || iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT
+				iptables -C FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT 2>/dev/null || iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
+				grep -q "INPUT -p $PROTOCOL --dport $porta -j ACCEPT" $RCLOCAL 2>/dev/null || sed -i "1 a\iptables -I INPUT -p $PROTOCOL --dport $porta -j ACCEPT" $RCLOCAL
+				grep -q "FORWARD -s 10.8.0.0/24 -j ACCEPT" $RCLOCAL 2>/dev/null || sed -i "1 a\iptables -I FORWARD -s 10.8.0.0/24 -j ACCEPT" $RCLOCAL
+				grep -q "FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL 2>/dev/null || sed -i "1 a\iptables -I FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT" $RCLOCAL
 				if hash sestatus 2>/dev/null; then
 					if sestatus | grep "Current mode" | grep -qs "enforcing"; then
 						if [[ "$porta" != '1194' || "$PROTOCOL" = 'tcp' ]]; then
@@ -1394,8 +1345,8 @@ exit 0' >$RCLOCAL
 				persist-key
 				persist-tun
 				remote-cert-tls server
-				cipher AES-256-CBC
-				comp-lzo yes
+				data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305
+				data-ciphers-fallback AES-256-GCM
 				setenv opt block-outside-dns
 				key-direction 1
 				verb 3
@@ -1720,15 +1671,14 @@ exit 0' >$RCLOCAL
 				fun_bar 'fun_msgsocks'
 				restartsocks() {
 					if ps x | grep proxy.py | grep -v grep 1>/dev/null 2>/dev/null; then
-						echo -e "$(netstat -nplt | grep 'python' | awk {'print $4'} | cut -d: -f2 | xargs)" >/tmp/Pt_sks
+						local _Ptsks
+						_Ptsks=$(netstat -nplt | grep 'python' | awk {'print $4'} | cut -d: -f2 | xargs)
 						for pidproxy in $(screen -ls | grep ".proxy" | awk {'print $1'}); do
 							screen -r -S "$pidproxy" -X quit
 						done
 						screen -wipe >/dev/null
-						_Ptsks="$(cat /tmp/Pt_sks)"
 						sleep 1
-						screen -dmS proxy python /etc/VPSManager/proxy.py $_Ptsks
-						rm /tmp/Pt_sks
+						screen -dmS proxy python /etc/VPSManager/proxy.py "$_Ptsks"
 					fi
                 }
 				echo ""
@@ -1815,15 +1765,14 @@ exit 0' >$RCLOCAL
 				fun_bar 'fun_msgsocks'
                 restartwssocks() {
                     if ps x | grep wsproxy.py | grep -v grep 1>/dev/null 2>/dev/null; then
-						echo -e "$(netstat -nplt | grep 'python' | awk {'print $4'} | cut -d: -f2 | xargs)" >/tmp/Pt_wssks
+						local _Ptwssks
+						_Ptwssks=$(netstat -nplt | grep 'python' | awk {'print $4'} | cut -d: -f2 | xargs)
 						for pidproxy in $(screen -ls | grep ".ws" | awk {'print $1'}); do
 							screen -r -S "$pidproxy" -X quit
 						done
 						screen -wipe >/dev/null
-						_Ptwssks="$(cat /tmp/Pt_wssks)"
 						sleep 1
-						screen -dmS ws python /etc/VPSManager/wsproxy.py $_Ptwssks
-						rm /tmp/Pt_wssks
+						screen -dmS ws python /etc/VPSManager/wsproxy.py "$_Ptwssks"
 					fi
 				}
 				echo ""
@@ -1978,7 +1927,6 @@ exit 0' >$RCLOCAL
 	x="ok"
 	fun_conexao() {
 		while true $x != "ok"; do
-			[[ ! -e '/home/vpsmanager' ]] && exit 0
 			clear
 			echo -e "\E[44;1;37m                CONNECTION MODE                 \E[0m\n"
 			echo -e "\033[1;32mSERVICE: \033[1;33mOPENSSH \033[1;32mPORT: \033[1;37m$(grep 'Port' /etc/ssh/sshd_config | cut -d' ' -f2 | grep -v 'no' | xargs)" && sts6="\033[1;32m♦ "
@@ -2097,4 +2045,3 @@ exit 0' >$RCLOCAL
 		done
 	}
 	fun_conexao
-}

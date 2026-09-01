@@ -1,74 +1,64 @@
-#!/bin/bash
-clear
-echo -e "\E[44;1;37m               🐉ㅤℹㅤVPS INFORMATIONㅤℹㅤ🐉                 \E[0m"
-echo ""
-if [ -f /etc/lsb-release ]
-then
-echo -e "\033[1;31m• \033[1;32mOPERATING SYSTEML\033[1;31m •\033[0m"
-echo ""
-name=$(cat /etc/lsb-release |grep DESCRIPTION |awk -F = {'print $2'})
-codename=$(cat /etc/lsb-release |grep CODENAME |awk -F = {'print $2'})
-echo -e "\033[1;33mVersion: \033[1;37m$name"
-echo -e "\033[1;33mCodeName: \033[1;37m$codename"
-echo -e "\033[1;33mKernel: \033[1;37m$(uname -s)"
-echo -e "\033[1;33mKernel Release: \033[1;37m$(uname -r)"
-if [ -f /etc/os-release ]
-then
-devlike=$(cat /etc/os-release |grep LIKE |awk -F = {'print $2'})
-echo -e "\033[1;33mDerived from OS: \033[1;37m$devlike"
-echo ""
+#!/usr/bin/env bash
+# Axiom VPS Manager — System & Port Diagnostics
+set -euo pipefail
+
+if [[ -t 0 ]]; then
+    clear
 fi
+echo -e "\E[44;1;37m               ⚡ Axiom VPS Diagnostics & Information ⚡                 \E[0m\n"
+
+# 1. Operating System Information
+echo -e "\033[1;31m• \033[1;32mOPERATING SYSTEM\033[1;31m •\033[0m\n"
+if [[ -f /etc/os-release ]]; then
+    # shellcheck source=/dev/null
+    . /etc/os-release
+    echo -e "\033[1;33mDistribution:\033[1;37m ${PRETTY_NAME:-Linux}"
+    echo -e "\033[1;33mKernel:\033[1;37m $(uname -s)"
+    echo -e "\033[1;33mKernel Release:\033[1;37m $(uname -r)"
+elif [[ -f /etc/issue.net ]]; then
+    echo -e "\033[1;33mVersion:\033[1;37m $(cat /etc/issue.net)"
+fi
+echo ""
+
+# 2. Processor Information
+echo -e "\033[1;31m• \033[1;32mPROCESSOR & ARCHITECTURE\033[1;31m •\033[0m\n"
+if [[ -f /proc/cpuinfo ]]; then
+    modelo=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -n1 | cut -d: -f2 | sed 's/^[ \t]*//' || echo "Generic CPU")
+    cpucores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo "1")
+    echo -e "\033[1;33mModel:\033[1;37m $modelo"
+    echo -e "\033[1;33mCPU Cores:\033[1;37m $cpucores"
+    echo -e "\033[1;33mArchitecture:\033[1;37m $(uname -m)"
 else
-system=$(cat /etc/issue.net)
-echo -e "\033[1;31m• \033[1;32mOPERATIONAL SYSTEM\033[1;31m •\033[0m"
-echo ""
-echo -e "\033[1;33mVersion: \033[1;37m$system"
-echo ""
+    echo -e "\033[1;33mArchitecture:\033[1;37m $(uname -m)"
 fi
+echo ""
 
-if [ -f /proc/cpuinfo ]
-then
-uso=$(top -bn1 | awk '/Cpu/ { cpu = "" 100 - $8 "%" }; END { print cpu }')
-echo -e "\033[1;31m• \033[1;32mPROCESSOR\033[1;31m •\033[0m"
-echo ""
-modelo=$(cat /proc/cpuinfo |grep "model name" |uniq |awk -F : {'print $2'})
-cpucores=$(grep -c cpu[0-9] /proc/stat)
-cache=$(cat /proc/cpuinfo |grep "cache size" |uniq |awk -F : {'print $2'})
-echo -e "\033[1;33mModel:\033[1;37m$modelo"
-echo -e "\033[1;33mCPU cores:\033[1;37m $cpucores"
-echo -e "\033[1;33mCache memory:\033[1;37m$cache"
-echo -e "\033[1;33mArchitecture: \033[1;37m$(uname -p)"
-echo -e "\033[1;33musage: \033[37m$uso"
-echo ""
+# 3. RAM & Memory Usage
+echo -e "\033[1;31m• \033[1;32mRAM & MEMORY USAGE\033[1;31m •\033[0m\n"
+if command -v free >/dev/null 2>&1; then
+    ram_total=$(free -h | awk '/Mem:/ {print $2}')
+    ram_used=$(free -h | awk '/Mem:/ {print $3}')
+    ram_free=$(free -h | awk '/Mem:/ {print $4}')
+    ram_pct=$(free -m | awk '/Mem:/ {printf "%.1f%%", $3*100/$2}')
+    echo -e "\033[1;33mTotal RAM:\033[1;37m $ram_total"
+    echo -e "\033[1;33mIn Use:\033[1;37m $ram_used ($ram_pct)"
+    echo -e "\033[1;33mFree / Available:\033[1;37m $ram_free"
 else
-echo -e "\033[1;32mPROCESSOR\033[0m"
-echo ""
-echo "Unable to get information"
+    echo "Unable to retrieve memory information."
 fi
-
-if free 1>/dev/null 2>/dev/null
-then
-ram1=$(free -h | grep -i mem | awk {'print $2'})
-ram2=$(free -h | grep -i mem | awk {'print $4'})
-ram3=$(free -h | grep -i mem | awk {'print $3'})
-usoram=$(free -m | awk 'NR==2{printf "%.2f%%\t\t", $3*100/$2 }')
-
-echo -e "\033[1;31m• \033[1;32mRAM MEMORY\033[1;31m •\033[0m"
 echo ""
-echo -e "\033[1;33mTotal: \033[1;37m$ram1"
-echo -e "\033[1;33mIn Use: \033[1;37m$ram3"
-echo -e "\033[1;33mFree: \033[1;37m$ram2"
-echo -e "\033[1;33musage: \033[37m$usoram"
-echo ""
+
+# 4. Active Listening Ports (TCP & UDP)
+echo -e "\033[1;31m• \033[1;32mACTIVE LISTENING PORTS (TCP & UDP)\033[1;31m •\033[0m\n"
+if command -v ss >/dev/null 2>&1; then
+    ss -tulpn 2>/dev/null | awk 'NR>1 {printf "  %-6s %-25s %s\n", $1, $5, $7}' || true
+elif command -v lsof >/dev/null 2>&1; then
+    lsof -V -i -P -n 2>/dev/null | grep LISTEN || true
 else
-echo -e "\033[1;32mRAM MEMORY\033[0m"
-echo ""
-echo "Unable to get information"
+    netstat -tulpn 2>/dev/null || true
 fi
-
 echo ""
-PT=$(lsof -V -i tcp -P -n | grep -v "ESTABLISHED" |grep -v "COMMAND" | grep "LISTEN")
-for porta in `echo -e "$PT" | cut -d: -f2 | cut -d' ' -f1 | uniq`; do
-    svcs=$(echo -e "$PT" | grep -w "$porta" | awk '{print $1}' | uniq)
-    echo -e "\033[1;33mService \033[1;37m$svcs \033[1;33mPort \033[1;37m$porta"
-done
+
+if [[ -t 0 ]]; then
+    read -r -p "Press Enter to return to menu..."
+fi

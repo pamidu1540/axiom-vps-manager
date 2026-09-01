@@ -3,47 +3,66 @@
 set -euo pipefail
 
 database="/root/usuarios.db"
-touch "$database"
+trial_database="/etc/VPSManager/trial_users.db"
+touch "$database" 2>/dev/null || true
 
 prune_excess_ssh() {
     local user="$1"
     local limit="$2"
 
-    # Get PIDs of user's active SSH sessions (sorted oldest to newest)
-    mapfile -t ssh_pids < <(pgrep -u "$user" -f "sshd:" 2>/dev/null || pgrep -u "$user" sshd 2>/dev/null || true)
-    local active_count="${#ssh_pids[@]}"
+    # Get PIDs of user's active SSH and Dropbear sessions (sorted oldest to newest)
+    mapfile -t active_pids < <(pgrep -u "$user" -f "sshd:" 2>/dev/null || pgrep -u "$user" sshd 2>/dev/null || pgrep -u "$user" dropbear 2>/dev/null || true)
+    local active_count="${#active_pids[@]}"
 
     if (( active_count > limit )); then
         local excess=$(( active_count - limit ))
-        # Terminate only the most recent excess sessions
+        # Terminate only the most recent excess sessions, keeping established ones alive
         for (( i=0; i<excess; i++ )); do
-            pid_to_kill="${ssh_pids[$(( active_count - 1 - i ))]}"
+            pid_to_kill="${active_pids[$(( active_count - 1 - i ))]}"
             kill -9 "$pid_to_kill" 2>/dev/null || true
         done
     fi
 }
 
 check_all_limits() {
-    [[ ! -f "$database" ]] && return 0
+    # Check standard users database
+    if [[ -f "$database" ]]; then
+        while read -r entry; do
+            [[ -z "$entry" ]] && continue
+            # Only match valid username and limit format
+            if [[ "$entry" =~ ^[a-zA-Z0-9_-]+[[:space:]]+[0-9]+$ ]]; then
+                user=$(echo "$entry" | awk '{print $1}')
+                limit=$(echo "$entry" | awk '{print $2}')
+                [[ -z "$limit" || "$limit" -lt 1 ]] && limit=1
 
-    while read -r entry; do
-        [[ -z "$entry" ]] && continue
-        user=$(echo "$entry" | awk '{print $1}')
-        limit=$(echo "$entry" | awk '{print $2}')
-        [[ -z "$limit" || "$limit" -lt 1 ]] && limit=1
+                if id "$user" >/dev/null 2>&1; then
+                    prune_excess_ssh "$user" "$limit"
+                fi
+            fi
+        done < "$database"
+    fi
 
-        if id "$user" >/dev/null 2>&1; then
-            prune_excess_ssh "$user" "$limit"
-        fi
-    done < "$database"
+    # Check trial users database
+    if [[ -f "$trial_database" ]]; then
+        while read -r trial_entry; do
+            [[ -z "$trial_entry" ]] && continue
+            t_user=$(echo "$trial_entry" | awk '{print $1}')
+            t_limit=$(echo "$trial_entry" | awk '{print $3}')
+            [[ -z "$t_limit" || "$t_limit" -lt 1 ]] && t_limit=1
+
+            if id "$t_user" >/dev/null 2>&1; then
+                prune_excess_ssh "$t_user" "$t_limit"
+            fi
+        done < "$trial_database"
+    fi
 }
 
-# If run directly as daemon loop
+# If run directly as one-shot check (e.g. for testing or cron)
 if [[ "${1:-}" == "--once" ]]; then
     check_all_limits
 else
     while true; do
         check_all_limits
-        sleep 10
+        sleep 5
     done
 fi

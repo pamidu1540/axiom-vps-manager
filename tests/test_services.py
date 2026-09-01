@@ -8,7 +8,9 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from axiom.services.hysteria import HysteriaService
+from axiom.services.qrcode_gen import QRCodeGenerator
 from axiom.services.singbox import SingboxService
+from axiom.services.wireguard import WireGuardService
 from axiom.services.xray import XrayService
 
 
@@ -39,3 +41,18 @@ def test_singbox_config():
     assert "inbounds" in cfg
     assert "outbounds" in cfg
     assert cfg["experimental"]["clash_api"]["external_controller"] == "127.0.0.1:9090"
+
+
+def test_wireguard_client_config():
+    wg = WireGuardService(interface="wg0", port=51820)
+    client = wg.add_client("test_client", client_ip="10.66.66.2/32", server_endpoint="1.2.3.4")
+    assert client["client_name"] == "test_client"
+    assert "[Interface]" in client["config"]
+    assert "Address = 10.66.66.2/32" in client["config"]
+    assert "Endpoint = 1.2.3.4:51820" in client["config"]
+
+
+def test_qrcode_generation():
+    qr = QRCodeGenerator.generate_terminal_qr("vless://test")
+    assert qr is not None
+    assert len(qr) > 0

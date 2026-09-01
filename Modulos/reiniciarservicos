@@ -10,9 +10,15 @@ echo -e "\033[1;36m====================================================\033[0m\n
 restart_svc() {
     local name="$1"
     local svc="$2"
-    if systemctl is-active --quiet "$svc" 2>/dev/null || systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+    if command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-active --quiet "$svc" 2>/dev/null || systemctl is-enabled --quiet "$svc" 2>/dev/null; then
+            echo -ne "\033[1;33m[*] Restarting $name ($svc)... \033[0m"
+            systemctl restart "$svc" 2>/dev/null || true
+            echo -e "\033[1;32m[OK]\033[0m"
+        fi
+    elif [[ -f "/etc/init.d/$svc" ]]; then
         echo -ne "\033[1;33m[*] Restarting $name ($svc)... \033[0m"
-        systemctl restart "$svc" 2>/dev/null || true
+        service "$svc" restart 2>/dev/null || "/etc/init.d/$svc" restart 2>/dev/null || true
         echo -e "\033[1;32m[OK]\033[0m"
     fi
 }
@@ -21,15 +27,20 @@ restart_svc "OpenSSH Server" "sshd"
 restart_svc "OpenSSH Server" "ssh"
 restart_svc "Axiom WebSocket Proxy" "axiom-wsproxy"
 restart_svc "Axiom Telegram Bot" "axiom-bot"
+restart_svc "Axiom BadVPN Gateway" "axiom-badvpn"
+restart_svc "Axiom Connection Limiter" "axiom-limiter"
 restart_svc "Caddy Web Server" "caddy"
 restart_svc "WireGuard VPN" "wg-quick@wg0"
 restart_svc "Xray Engine" "xray"
 restart_svc "Hysteria 2" "hysteria-server"
+restart_svc "Sing-box Proxy" "sing-box"
 restart_svc "Squid Proxy" "squid"
 restart_svc "Squid Proxy" "squid3"
 restart_svc "Dropbear SSH" "dropbear"
 restart_svc "OpenVPN Server" "openvpn"
+restart_svc "OpenVPN Server" "openvpn@server"
 restart_svc "Stunnel4 TLS" "stunnel4"
+restart_svc "SSLH Multiplexer" "sslh"
 
 echo -e "\n\033[1;32m[✓] All active services restarted successfully.\033[0m\n"
 read -r -p "Press Enter to return to menu..."

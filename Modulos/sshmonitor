@@ -2,6 +2,17 @@
 # Axiom VPS Manager — Active SSH & VPN User Monitor
 set -euo pipefail
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
 database="/root/usuarios.db"
 touch "$database"
 
@@ -10,6 +21,11 @@ echo -e "\E[44;1;37m Username          Status       Active/Limit   Session Time 
 
 while read -r usline; do
     [[ -z "$usline" ]] && continue
+    # Safe validation of DB entry format
+    if ! [[ "$usline" =~ ^[a-zA-Z0-9_-]+[[:space:]]+[0-9]+ ]]; then
+        continue
+    fi
+
     user=$(echo "$usline" | awk '{print $1}')
     limit=$(echo "$usline" | awk '{print $2}')
     [[ -z "$limit" ]] && limit="1"
@@ -28,14 +44,15 @@ while read -r usline; do
 
     total_conns=$((ssh_conns + drop_conns + ovp_conns))
 
-    # Elapsed session time for first session
-    session_time="00:00:00"
-    first_pid=$(pgrep -u "$user" sshd 2>/dev/null | head -n1 || echo "")
-    if [[ -n "$first_pid" ]]; then
-        session_time=$(ps -p "$first_pid" -o etime= 2>/dev/null | xargs || echo "00:00:00")
-    fi
-
+    # Elapsed session time for first session (OpenSSH or Dropbear)
+    session_time="--:--:--"
     if (( total_conns > 0 )); then
+        first_pid=$(pgrep -u "$user" 'sshd|dropbear' 2>/dev/null | head -n1 || echo "")
+        if [[ -n "$first_pid" ]]; then
+            session_time=$(ps -p "$first_pid" -o etime= 2>/dev/null | xargs || echo "00:00:00")
+        else
+            session_time="Active"
+        fi
         status_fmt="\033[1;32mOnline \033[0m"
     else
         status_fmt="\033[1;31mOffline\033[0m"

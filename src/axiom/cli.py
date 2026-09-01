@@ -71,6 +71,11 @@ def main():
     # Bandwidth Stats
     subparsers.add_parser("bandwidth", help="Display network interface bandwidth metrics")
 
+    # Telegram Bot
+    bot_parser = subparsers.add_parser("bot", help="Run Axiom Telegram Bot daemon")
+    bot_parser.add_argument("--token", help="Telegram Bot Token", default=None)
+    bot_parser.add_argument("--admin-id", help="Admin Telegram User ID", type=int, default=None)
+
     # Uninstaller
     subparsers.add_parser("uninstall", help="Completely remove Axiom VPS Manager")
 
@@ -82,6 +87,39 @@ def main():
         return
 
     user_mgr = UserManager()
+
+    if args.command == "bot":
+        import os
+
+        from axiom.config import load_config
+        from axiom.telegram.bot import AxiomTelegramBot
+
+        config = load_config()
+        telegram_cfg = config.get("telegram", {})
+        token = (
+            args.token
+            or os.environ.get("AXIOM_BOT_TOKEN")
+            or os.environ.get("TELEGRAM_BOT_TOKEN")
+            or os.environ.get("BOT_TOKEN")
+            or telegram_cfg.get("bot_token")
+        )
+        admin_id = args.admin_id
+        if admin_id is None:
+            env_admin = (
+                os.environ.get("AXIOM_BOT_ADMIN_ID")
+                or os.environ.get("ADMIN_CHAT_ID")
+                or os.environ.get("ADMIN_ID")
+                or telegram_cfg.get("admin_chat_id")
+            )
+            if env_admin and str(env_admin).strip().isdigit():
+                admin_id = int(str(env_admin).strip())
+
+        if not token:
+            print("❌ No Telegram Bot Token provided. Set AXIOM_BOT_TOKEN or configure axiom.toml.")
+            return
+
+        bot = AxiomTelegramBot(token=token, admin_id=admin_id)
+        bot.run()
 
     if args.command == "user":
         if args.user_action == "create":

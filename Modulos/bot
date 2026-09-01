@@ -7,7 +7,6 @@ api_bot=$1
 id_admin=$2
 [[ -z $api_bot ]] && exit 0
 [[ -z $id_admin ]] && exit 0
-[[ ! -e /usr/lib/licence ]] && exit 0
 ativos='/etc/bot/lista_ativos'
 suspensos='/etc/bot/lista_suspensos'
 ShellBot.init --token "$api_bot" --monitor --return map --flush
@@ -218,16 +217,12 @@ criar_user() {
     validade=$(echo "$data" | awk -F'/' '{print $2FS$1FS$3}' | xargs -i date -d'{}' +%Y/%m/%d)
 
     useradd -M -N -s /bin/false $usuario -e $validade >/dev/null 2>&1
-    (
-        echo "${senha}"
-        echo "${senha}"
-    ) | passwd "${usuario}" >/dev/null 2>&1
+    echo "$usuario:$senha" | chpasswd
     [[ "${message_from_id[$id]}" != "$id_admin" ]] && {
         echo "$usuario:$senha:$info_data:$limite" >/etc/bot/revenda/${message_from_username}/usuarios/$usuario
         echo "$usuario:$senha:$info_data:$limite" >/etc/bot/info-users/$usuario
     }
     echo "$usuario $limite" >>/root/usuarios.db
-    echo "$senha" >/etc/VPSManager/senha/$usuario
     [[ -e "/etc/openvpn/server.conf" ]] && {
         cd /etc/openvpn/easy-rsa/
         ./easyrsa build-client-full $usuario nopass
@@ -260,7 +255,6 @@ fun_del_user() {
         userdel --force "$usuario" 2>/dev/null
         grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/ph
         cat /tmp/ph >/root/usuarios.db
-        rm /etc/VPSManager/senha/$usuario >/dev/null 2>&1
     } || {
         [[ ! -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
             ShellBot.sendMessage --chat_id ${message_chat_id[$id]} \
@@ -274,7 +268,6 @@ fun_del_user() {
         userdel --force "$usuario" 2>/dev/null
         grep -v ^$usuario[[:space:]] /root/usuarios.db >/tmp/ph
         cat /tmp/ph >/root/usuarios.db
-        rm /etc/VPSManager/senha/$usuario >/dev/null 2>&1
         rm /etc/bot/revenda/${message_from_username}/usuarios/$usuario
         rm /etc/bot/info-users/$usuario
     }
@@ -315,7 +308,6 @@ alterar_senha_user() {
     usuario=$1
     senha=$2
     echo "$usuario:$senha" | chpasswd
-    echo "$senha" >/etc/VPSManager/senha/$usuario
     [[ -e /etc/bot/revenda/${message_from_username}/usuarios/$usuario ]] && {
         senha2=$(cat /etc/bot/revenda/${message_from_username}/usuarios/$usuario | awk -F : {'print $2'})
         sed -i "/$usuario/ s/\b$senha2\b/$senha/g" /etc/bot/revenda/${message_from_username}/usuarios/$usuario
@@ -451,7 +443,7 @@ ver_users() {
             local info
             for user in $(cat /etc/passwd | awk -F : '$3 >= 1000 {print $1}' | grep -v nobody); do
                 info='◈──────────────────◈\n'
-                [[ -e /etc/VPSManager/senha/$user ]] && senha=$(cat /etc/VPSManager/senha/$user) || senha='Null'
+                senha='[hidden]'
                 [[ $(grep -wc $user $HOME/usuarios.db) != '0' ]] && limite=$(grep -w $user $HOME/usuarios.db | cut -d' ' -f2) || limite='Null'
                 datauser=$(chage -l $user | grep -i co | awk -F : '{print $2}')
                 [[ $datauser = ' never' ]] && {
@@ -503,7 +495,7 @@ ver_users() {
             local info
             for user in $(ls /etc/bot/revenda/${callback_query_from_username}/usuarios); do
                 info='◈──────────────────◈\n'
-                [[ -e /etc/VPSManager/senha/$user ]] && senha=$(cat /etc/VPSManager/senha/$user) || senha='Null'
+                senha='[hidden]'
                 [[ $(grep -wc $user $HOME/usuarios.db) != '0' ]] && limite=$(grep -w $user $HOME/usuarios.db | cut -d' ' -f2) || limite='Null'
                 datauser=$(chage -l $user | grep -i co | awk -F : '{print $2}')
                 [[ $datauser = ' never' ]] && {
@@ -878,7 +870,7 @@ backup_users() {
     rm /root/backup.vps 1>/dev/null 2>/dev/null
     ShellBot.answerCallbackQuery --callback_query_id ${callback_query_id[$id]} \
         --text "♻️ CREATING USER BACKUP"
-    tar cvf /root/backup.vps /root/usuarios.db /etc/shadow /etc/passwd /etc/group /etc/gshadow /etc/bot /etc/VPSManager/senha 1>/dev/null 2>/dev/null
+    tar cvf /root/backup.vps /root/usuarios.db /etc/shadow /etc/passwd /etc/group /etc/gshadow /etc/bot 1>/dev/null 2>/dev/null
     ShellBot.sendDocument --chat_id ${id_admin} \
         --document "@/root/backup.vps" \
         --caption "$(echo -e "♻️ USER BACKUP ♻️")"
@@ -944,11 +936,7 @@ fun_teste() {
         _erro='1'
     }
     useradd -M -N -s /bin/false $usuario -e $tuserdate >/dev/null 2>&1
-    (
-        echo "$senha"
-        echo "$senha"
-    ) | passwd $usuario >/dev/null 2>&1
-    echo "$senha" >/etc/VPSManager/senha/$usuario
+    echo "$usuario:$senha" | chpasswd
     echo "$usuario $limite" >>/root/usuarios.db
     [[ "${message_from_id[$id]}" != "$id_admin" ]] && {
         echo "$usuario:$senha:$ex_date:$limite" >/etc/bot/revenda/${message_from_username}/usuarios/$usuario
@@ -961,7 +949,6 @@ fun_teste() {
 	userdel --force $usuario
 	grep -v ^$usuario[[:space:]] /root/usuarios.db > /tmp/ph ; cat /tmp/ph > /root/usuarios.db
 	[[ -e $dir_teste ]] && rm $dir_teste
-	rm /etc/VPSManager/senha/$usuario > /dev/null 2>&1
 	rm /etc/VPSManager/userteste/$usuario.sh
 	EOF
     chmod +x /etc/VPSManager/userteste/$usuario.sh

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 database="/root/usuarios.db"
-touch "$database"
+touch "$database" 2>/dev/null || true
 
 clear
 echo -e "\E[42;1;37m        ⚡ Axiom - Dropbear Connection Monitor ⚡        \E[0m"

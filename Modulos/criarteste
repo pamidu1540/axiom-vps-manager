@@ -2,7 +2,25 @@
 # Axiom VPS Manager — Temporary Trial Account Generator
 set -euo pipefail
 
-IP=$(cat /etc/IP 2>/dev/null || curl -s -4 ifconfig.me || echo "127.0.0.1")
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
+IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me || echo "127.0.0.1")
 mkdir -p /etc/VPSManager/userteste
 
 clear
@@ -14,6 +32,11 @@ if [[ -z "$nome" ]]; then
     nome="trial$((RANDOM % 8999 + 1000))"
 fi
 
+if ! [[ "$nome" =~ ^[a-zA-Z0-9_-]{3,32}$ ]]; then
+    echo -e "\n\033[1;31m[!] Invalid username. Use 3-32 alphanumeric characters, dash, or underscore.\033[0m\n"
+    exit 1
+fi
+
 if id "$nome" >/dev/null 2>&1; then
     echo -e "\n\033[1;31m[!] User '$nome' already exists.\033[0m\n"
     exit 1
@@ -22,30 +45,67 @@ fi
 read -r -s -p "Enter password (or press enter for random): " pass
 echo ""
 if [[ -z "$pass" ]]; then
-    pass=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 10 || echo "$((RANDOM % 899999 + 100000))")
+    pass=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 10 || echo "Ax$(date +%s%N | tail -c 8)")
 fi
 
 read -r -p "Validity duration in minutes [default 60]: " u_temp
 u_temp="${u_temp:-60}"
+if ! [[ "$u_temp" =~ ^[0-9]+$ ]] || [[ "$u_temp" -lt 1 ]]; then
+    echo -e "\n\033[1;31m[!] Duration must be a positive integer.\033[0m\n"
+    exit 1
+fi
 
+# Create system user without interactive shell
 useradd -M -s /bin/false "$nome" >/dev/null 2>&1
 echo "$nome:$pass" | chpasswd
 
+# Register in main usuarios.db atomically
 touch /root/usuarios.db
-echo "$nome 1" >> /root/usuarios.db
+tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
+grep -v "^${nome}[[:space:]]" /root/usuarios.db > "$tmp_db" || true
+echo "$nome 1" >> "$tmp_db"
+mv "$tmp_db" /root/usuarios.db
+chmod 644 /root/usuarios.db
 
+# Register in dedicated trial database
+now_epoch=$(date +%s)
+exp_epoch=$(( now_epoch + u_temp * 60 ))
+mkdir -p /etc/VPSManager
+touch /etc/VPSManager/trial_users.db
+tmp_trial=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_trial" || true
+echo "$nome $exp_epoch 1" >> "$tmp_trial"
+mv "$tmp_trial" /etc/VPSManager/trial_users.db
+chmod 644 /etc/VPSManager/trial_users.db
+
+# Generate dedicated cleanup script
 cleanup_script="/etc/VPSManager/userteste/${nome}.sh"
 cat <<EOF > "$cleanup_script"
 #!/usr/bin/env bash
 pkill -u "$nome" 2>/dev/null || true
 userdel -f "$nome" 2>/dev/null || true
-tmp=\$(mktemp)
-grep -v "^${nome}[[:space:]]" /root/usuarios.db > "\$tmp" || true
-mv "\$tmp" /root/usuarios.db
+if [[ -f /root/usuarios.db ]]; then
+    tmp=\$(mktemp /root/usuarios.db.XXXXXX)
+    grep -v "^${nome}[[:space:]]" /root/usuarios.db > "\$tmp" || true
+    mv "\$tmp" /root/usuarios.db
+    chmod 644 /root/usuarios.db 2>/dev/null || true
+fi
+if [[ -f /etc/VPSManager/trial_users.db ]]; then
+    tmp_t=\$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+    grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "\$tmp_t" || true
+    mv "\$tmp_t" /etc/VPSManager/trial_users.db
+    chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
+fi
 rm -f "$cleanup_script"
 EOF
 chmod +x "$cleanup_script"
+
+# Queue via at daemon with graceful fallback to background sweep if atd is absent
 echo "$cleanup_script" | at "now + $u_temp min" >/dev/null 2>&1 || true
+
+if type axiom_audit >/dev/null 2>&1; then
+    axiom_audit "TRIAL_CREATE" "$nome" "duration_min=$u_temp"
+fi
 
 clear
 echo -e "\033[1;36m============================================\033[0m"

@@ -2,6 +2,24 @@
 # Axiom VPS Manager — Password Change Module
 set -euo pipefail
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
 clear
 tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Change User Password  " ; tput sgr0
 echo ""
@@ -38,7 +56,7 @@ fi
 read -r -s -p "Enter new password for $target_user (min 8 chars, empty for random): " new_pass
 echo ""
 if [[ -z "$new_pass" ]]; then
-    new_pass=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 12 || echo "$((RANDOM % 899999 + 100000))")
+    new_pass=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 12 || echo "Ax$(date +%s%N | tail -c 8)")
 fi
 
 if [[ ${#new_pass} -lt 8 ]]; then
@@ -49,8 +67,12 @@ fi
 # Disconnect existing sessions for this user safely
 pkill -u "$target_user" 2>/dev/null || true
 
-# Update password via chpasswd
+# Update password via chpasswd over stdin (zero plaintext files written to disk)
 echo "$target_user:$new_pass" | chpasswd
+
+if type axiom_audit >/dev/null 2>&1; then
+    axiom_audit "USER_CHANGE_PASSWORD" "$target_user" "length=${#new_pass}"
+fi
 
 echo -e "\n\033[1;32m[✓] Password for user '$target_user' successfully updated.\033[0m"
 echo -e "    New Password: \033[1;33m$new_pass\033[0m\n"

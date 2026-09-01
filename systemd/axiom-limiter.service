@@ -1,0 +1,15 @@
+[Unit]
+Description=Axiom Connection Limiter Daemon
+After=network.target sshd.service
+
+[Service]
+Type=simple
+ExecStart=/opt/axiom/Modulos/limiter
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=axiom-limiter
+
+[Install]
+WantedBy=multi-user.target

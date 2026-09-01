@@ -31,62 +31,54 @@ menu() {
 
 # - funcao criar ssh
 criarssh30() {
-    
     usuario=$(echo BR$(( RANDOM% + 999999)))
     senha=$((RANDOM% + 99999))
     limite='1'
     tempo='31'
     final=$(date "+%Y-%m-%d" -d "+$tempo days")
     gui=$(date "+%d/%m/%Y" -d "+$tempo days")
-    pass=$(perl -e 'print crypt($ARGV[0], "password")' $senha)
     
-  if [[ "$(grep -wc $usuario /etc/passwd)" != '0' ]]; then
-      ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
-        --text "◇ GENERATED ACCOUNT ALREADY EXISTS! TRY AGAIN"
-      return 0
-    
-  else
-     useradd -e $final -M -s /bin/false -p $pass $usuario >/dev/null 2>&1
-    (echo "$senha";echo "$senha") | passwd $usuario > /dev/null 2>&1
-    echo "$senha" > /etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >> /root/usuarios.db
+    if [[ "$(grep -wc $usuario /etc/passwd)" != '0' ]]; then
+        ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
+            --text "◇ GENERATED ACCOUNT ALREADY EXISTS! TRY AGAIN"
+        return 0
+    else
+        useradd -e $final -M -s /bin/false $usuario >/dev/null 2>&1
+        echo "$usuario:$senha" | chpasswd
+        echo "$usuario $limite" >> /root/usuarios.db
 
-    # - ENVIA O SSH
-    ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
-    --text "$(echo -e "✅ <b>successfully created</b> ✅\n\n<b>SERVER</b>: $(cat /etc/IP) \n<b>USERNAME</b>: <code>$usuario</code>\n<b>PASSWORD</b>: <code>$senha</code>\n<b>EXPIRE</b>: 01\n\n⏳ Expira em: $gui ")" \
-    --parse_mode html
-    return 0
-  fi
+        # - ENVIA O SSH
+        ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
+            --text "$(echo -e "✅ <b>successfully created</b> ✅\n\n<b>SERVER</b>: $(cat /etc/IP 2>/dev/null || echo "127.0.0.1") \n<b>USERNAME</b>: <code>$usuario</code>\n<b>PASSWORD</b>: <code>$senha</code>\n<b>EXPIRE</b>: 01\n\n⏳ Expira em: $gui ")" \
+            --parse_mode html
+        return 0
+    fi
 }
 
 # - funcao criar ssh
 criarssh15() {
-    
     usuario=$(echo BR$(( RANDOM% + 999999)))
     senha=$((RANDOM% + 99999))
     limite='1'
     tempo='16'
     final=$(date "+%Y-%m-%d" -d "+$tempo days")
     gui=$(date "+%d/%m/%Y" -d "+$tempo days")
-    pass=$(perl -e 'print crypt($ARGV[0], "password")' $senha)
     
-  if [[ "$(grep -wc $usuario /etc/passwd)" != '0' ]]; then
-      ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
-        --text "◇ GENERATED ACCOUNTALREADY EXISTS! TRY AGAIN"
-      return 0
-    
-  else
-     useradd -e $final -M -s /bin/false -p $pass $usuario >/dev/null 2>&1
-    (echo "$senha";echo "$senha") | passwd $usuario > /dev/null 2>&1
-    echo "$senha" > /etc/VPSManager/senha/$usuario
-    echo "$usuario $limite" >> /root/usuarios.db
+    if [[ "$(grep -wc $usuario /etc/passwd)" != '0' ]]; then
+        ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
+            --text "◇ GENERATED ACCOUNT ALREADY EXISTS! TRY AGAIN"
+        return 0
+    else
+        useradd -e $final -M -s /bin/false $usuario >/dev/null 2>&1
+        echo "$usuario:$senha" | chpasswd
+        echo "$usuario $limite" >> /root/usuarios.db
 
-    # - ENVIA O SSH
-    ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
-    --text "$(echo -e "✅ <b>pt7gtpgt7pgt7pgt7phpuygypu7o</b> ✅\n\n<b>SERVIDOR</b>: $(cat /etc/IP) \n<b>USUARIO</b>: <code>$usuario</code>\n<b>SENHA</b>: <code>$senha</code>\n<b>ACESSO</b>: 01\n\n⏳ Expira em: $gui ")" \
-    --parse_mode html
-    return 0
-  fi
+        # - ENVIA O SSH
+        ShellBot.sendMessage --chat_id ${callback_query_message_chat_id} \
+            --text "$(echo -e "✅ <b>successfully created</b> ✅\n\n<b>SERVER</b>: $(cat /etc/IP 2>/dev/null || echo "127.0.0.1") \n<b>USERNAME</b>: <code>$usuario</code>\n<b>PASSWORD</b>: <code>$senha</code>\n<b>EXPIRE</b>: 01\n\n⏳ Expira em: $gui ")" \
+            --parse_mode html
+        return 0
+    fi
 }
 
 #informacoes usuario

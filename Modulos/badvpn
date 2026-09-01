@@ -1,114 +1,123 @@
-#!/bin/bash
-fun_badvpn() {
-    clear
-    echo -e "\E[44;1;37m        ㅤ🐉ㅤBADVPN MANAGERㅤ🐉ㅤ         \E[0m"
-    echo ""
-    if ps x | grep -w udpvpn | grep -v grep 1>/dev/null 2>/dev/null; then
-        echo -e "\033[1;33m◇ PORTS\033[1;37m: \033[1;32m$(netstat -nplt | grep 'badvpn-ud' | awk {'print $4'} | cut -d: -f2 | xargs)"
-    else
-        sleep 0.1
-    fi
-    var_sks1=$(ps x | grep "udpvpn"|grep -v grep > /dev/null && echo -e "\033[1;32m♦ " || echo -e "\033[1;31m○ ")
-    echo ""
-    echo -e "\033[1;31m[\033[1;36m1\033[1;31m] \033[1;37m• \033[1;33mACTIVATE BADVPN(Port 7300) $var_sks1 \033[0m"
-    echo -e "\033[1;31m[\033[1;36m2\033[1;31m] \033[1;37m• \033[1;33mOPEN THE PORT\033[0m"
-    echo -e "\033[1;31m[\033[1;36m0\033[1;31m] \033[1;37m• \033[1;33mCOME BACK\033[0m"
-    echo ""
-    echo -ne "\033[1;32m◇ WHAT DO YOU WANT TO DO \033[1;33m?\033[1;37m "
-    read resposta
-    if [[ "$resposta" = '1' ]]; then
-        if ps x | grep -w udpvpn | grep -v grep 1>/dev/null 2>/dev/null; then
-            clear
-            echo -e "\E[41;1;37m             BADVPN              \E[0m"
-            echo ""
-            fun_stopbad () {
-                sleep 1
-                for pidudpvpn in $(screen -ls | grep ".udpvpn" | awk {'print $1'}); do
-                    screen -r -S "$pidudpvpn" -X quit
-				done
-                [[ $(grep -wc "udpvpn" /etc/autostart) != '0' ]] && {
-                    sed -i '/udpvpn/d' /etc/autostart
-                }
-                sleep 1
-                screen -wipe >/dev/null
-            }
-            echo -e "\033[1;32m◇ DISABLING BADVPN\033[1;33m"
-            echo ""
-            fun_stopbad
-            echo ""
-            echo -e "\033[1;32m◇ BADVPN SUCCESSFULLY DISABLED!\033[1;33m"
-            sleep 3
-            fun_badvpn
+#!/usr/bin/env bash
+# Axiom VPS Manager — BadVPN UDP Gateway Manager
+set -euo pipefail
+
+EXPECTED_SHA256="48832133b7bdff20261bac41713e3ea231404b85764c1143d2095311867fb43f"
+
+install_binary() {
+    if [[ ! -f "/bin/badvpn-udpgw" ]]; then
+        if [[ -f "/opt/axiom/Modulos/badvpn-udpgw" ]]; then
+            cp "/opt/axiom/Modulos/badvpn-udpgw" /bin/badvpn-udpgw
+        elif [[ -f "Modulos/badvpn-udpgw" ]]; then
+            cp "Modulos/badvpn-udpgw" /bin/badvpn-udpgw
+        elif [[ -f "Install/badvpn-udpgw" ]]; then
+            cp "Install/badvpn-udpgw" /bin/badvpn-udpgw
         else
-            clear
-            echo -e "\033[1;32m◇ STARTING BADVPN... \033[0m\n"
-            fun_udpon () {
-                screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 8
-                [[ $(grep -wc "udpvpn" /etc/autostart) = '0' ]] && {
-                    echo -e "ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 8 --client-socket-sndbuf 10000" >> /etc/autostart
-                } || {
-                    sed -i '/udpvpn/d' /etc/autostart
-                    echo -e "ps x | grep 'udpvpn' | grep -v 'grep' || screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr 127.0.0.1:7300 --max-clients 10000 --max-connections-for-client 8 --client-socket-sndbuf 10000" >> /etc/autostart
-                }
-                sleep 1
-            }
-            inst_udp () {
-                if [[ ! -f "/bin/badvpn-udpgw" ]]; then
-                    curl -sSL -o /bin/badvpn-udpgw https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Modulos/badvpn-udpgw 2>/dev/null || true
-                    chmod 755 /bin/badvpn-udpgw 2>/dev/null || true
-                fi
-            }
-            echo ""
-            inst_udp
-            fun_udpon
-            echo ""
-            echo -e "\033[1;32m◇ SUCCESSFULLY ACTIVATED BADVPN\033[1;33m"
-            sleep 3
-            fun_badvpn
+            echo -e "\033[1;33m[*] Downloading BadVPN binary...\033[0m"
+            curl -sSL -o /bin/badvpn-udpgw https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Modulos/badvpn-udpgw 2>/dev/null || true
         fi
-    elif [[ "$resposta" = '2' ]]; then
-        if ps x | grep -w udpvpn | grep -v grep 1>/dev/null 2>/dev/null; then
-            clear
-            echo -e "\E[44;1;37m            BADVPN             \E[0m"
-            echo ""
-            echo -ne "\033[1;32m◇ WHICH PORT YOU WANT TO USE \033[1;33m?\033[1;37m: "
-            read porta
-            [[ -z "$porta" ]] && {
-                echo ""
-                echo -e "\033[1;31m◇ Invalid port!"
-                sleep 2
-                clear
-                menu
-            }
-            echo ""
-            echo -e "\033[1;32m◇ STARTING BADVPN AT THE PORT \033[1;31m$porta\033[1;33m"
-            echo ""
-            fun_abrirptbad() {
-                sleep 1
-                screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr 127.0.0.1:$porta --max-clients 10000 --max-connections-for-client 8
-                sleep 1
-            }
-            fun_abrirptbad
-            echo ""
-            echo -e "\033[1;32m◇ SUCCESSFULLY ACTIVATED BADVPN\033[1;33m"
-            sleep 2
-            fun_badvpn
-        else
-            clear
-            echo -e "\033[1;31m◇ UNAVAILABLE FUNCTION\n\n\033[1;33mACTIVATE BADVPN FIRST!\033[1;33m"
-            sleep 2
-            fun_badvpn
+        chmod 755 /bin/badvpn-udpgw 2>/dev/null || true
+
+        # Verify integrity if sha256sum exists
+        if command -v sha256sum >/dev/null 2>&1 && [[ -f "/bin/badvpn-udpgw" ]]; then
+            local actual_hash
+            actual_hash=$(sha256sum /bin/badvpn-udpgw | awk '{print $1}')
+            if [[ "$actual_hash" != "$EXPECTED_SHA256" ]]; then
+                echo -e "\033[1;33m[!] Warning: BadVPN binary SHA256 verification ($actual_hash)\033[0m"
+            fi
         fi
-    elif [[ "$resposta" = '0' ]]; then
-        echo ""
-        echo -e "\033[1;31m◇ Returning...\033[0m"
-        sleep 1
-        menu
-    else
-        echo ""
-        echo -e "\033[1;31m◇ Invalid option!\033[0m"
-        sleep 1
-        fun_badvpn
     fi
 }
-fun_badvpn
+
+start_badvpn() {
+    local port="${1:-7300}"
+    install_binary
+
+    if command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files | grep -q "axiom-badvpn.service"; then
+        systemctl enable axiom-badvpn.service >/dev/null 2>&1 || true
+        systemctl restart axiom-badvpn.service >/dev/null 2>&1 || true
+    else
+        pkill -f "badvpn-udpgw --listen-addr 127.0.0.1:$port" 2>/dev/null || true
+        screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr "127.0.0.1:$port" --max-clients 10000 --max-connections-for-client 8 --client-socket-sndbuf 10000
+    fi
+    echo -e "\033[1;32m[✓] BadVPN UDP Gateway activated on port $port\033[0m"
+}
+
+stop_badvpn() {
+    if command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet axiom-badvpn.service 2>/dev/null; then
+        systemctl stop axiom-badvpn.service >/dev/null 2>&1 || true
+        systemctl disable axiom-badvpn.service >/dev/null 2>&1 || true
+    fi
+    for pidudpvpn in $(screen -ls 2>/dev/null | grep ".udpvpn" | awk '{print $1}'); do
+        screen -r -S "$pidudpvpn" -X quit 2>/dev/null || true
+    done
+    pkill -f "badvpn-udpgw" 2>/dev/null || true
+    screen -wipe >/dev/null 2>&1 || true
+    echo -e "\033[1;32m[✓] BadVPN UDP Gateway stopped.\033[0m"
+}
+
+is_running() {
+    if pgrep -f "badvpn-udpgw" >/dev/null 2>&1 || (command -v systemctl >/dev/null 2>&1 && systemctl is-active --quiet axiom-badvpn.service 2>/dev/null); then
+        return 0
+    else
+        return 1
+    fi
+}
+
+menu_badvpn() {
+    if [[ ! -t 0 ]]; then
+        case "${1:-status}" in
+            start|1) start_badvpn "${2:-7300}" ;;
+            stop|0)  stop_badvpn ;;
+            *)       is_running && echo "running" || echo "stopped" ;;
+        esac
+        return 0
+    fi
+
+    clear
+    echo -e "\E[44;1;37m        ⚡ Axiom BadVPN UDP Gateway Manager ⚡         \E[0m\n"
+    
+    if is_running; then
+        local active_ports
+        active_ports=$(ss -ulpn 2>/dev/null | grep 'badvpn-ud' | awk '{print $5}' | cut -d: -f2 | xargs || netstat -nplt 2>/dev/null | grep 'badvpn-ud' | awk '{print $4}' | cut -d: -f2 | xargs || echo "7300")
+        echo -e "\033[1;33mStatus:\033[0m \033[1;32mACTIVE\033[0m  \033[1;33mPort(s):\033[0m \033[1;37m${active_ports:-7300}\033[0m\n"
+        echo -e "\033[1;31m[1]\033[0m Stop BadVPN"
+        echo -e "\033[1;32m[2]\033[0m Change Port"
+    else
+        echo -e "\033[1;33mStatus:\033[0m \033[1;31mSTOPPED\033[0m\n"
+        echo -e "\033[1;32m[1]\033[0m Start BadVPN (Port 7300)"
+        echo -e "\033[1;32m[2]\033[0m Start on Custom Port"
+    fi
+    echo -e "\033[1;31m[0]\033[0m Return to Menu\n"
+
+    read -r -p "Select an option [0-2]: " resp
+    case "$resp" in
+        1)
+            if is_running; then
+                stop_badvpn
+            else
+                start_badvpn 7300
+            fi
+            sleep 2
+            ;;
+        2)
+            read -r -p "Enter UDP port to use: " custom_port
+            if [[ "$custom_port" =~ ^[0-9]+$ && "$custom_port" -ge 1 && "$custom_port" -le 65535 ]]; then
+                stop_badvpn
+                start_badvpn "$custom_port"
+            else
+                echo -e "\033[1;31m[!] Invalid port number.\033[0m"
+            fi
+            sleep 2
+            ;;
+        0)
+            exit 0
+            ;;
+        *)
+            echo -e "\033[1;31m[!] Invalid option.\033[0m"
+            sleep 2
+            ;;
+    esac
+}
+
+menu_badvpn "${1:-}"

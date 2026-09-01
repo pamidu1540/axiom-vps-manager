@@ -4,7 +4,10 @@ Built on python-telegram-bot v22.8 (Bot API 9.6) with non-blocking async archite
 """
 
 import logging
+import os
+import sys
 
+from axiom.config import load_config
 from axiom.monitor.stats import SystemMonitor
 from axiom.users.manager import UserManager
 
@@ -22,6 +25,22 @@ try:
     PTB_AVAILABLE = True
 except ImportError:
     PTB_AVAILABLE = False
+    Update = None
+    ContextTypes = None
+
+    class InlineKeyboardButton:  # type: ignore[no-redef]
+        """Stub for environments without python-telegram-bot installed."""
+
+        def __init__(self, text: str, callback_data: str = ""):
+            self.text = text
+            self.callback_data = callback_data
+
+    class InlineKeyboardMarkup:  # type: ignore[no-redef]
+        """Stub for environments without python-telegram-bot installed."""
+
+        def __init__(self, keyboard):
+            self.keyboard = keyboard
+
 
 
 class AxiomTelegramBot:
@@ -30,7 +49,13 @@ class AxiomTelegramBot:
         self.admin_id = admin_id
         self.user_manager = UserManager()
 
-    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    def is_authorized(self, user_id: int | None) -> bool:
+        """Checks if the given user ID has administrator privileges."""
+        if self.admin_id is None:
+            return True
+        return user_id is not None and user_id == self.admin_id
+
+    async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE if ContextTypes else None):
         """Handles /start command with interactive inline menu."""
         keyboard = [
             [InlineKeyboardButton("📊 System Status", callback_data="status")],
@@ -44,10 +69,14 @@ class AxiomTelegramBot:
             parse_mode="HTML",
         )
 
-    async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Processes inline keyboard interactions."""
+    async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE if ContextTypes else None):
+        """Processes inline keyboard interactions with authorization checks."""
         query = update.callback_query
+        if not query:
+            return
         await query.answer()
+
+        user_id = update.effective_user.id if update.effective_user else None
 
         if query.data == "status":
             metrics = SystemMonitor.get_system_metrics()
@@ -60,7 +89,8 @@ class AxiomTelegramBot:
             await query.edit_message_text(text, parse_mode="HTML")
 
         elif query.data == "create_trial":
-            user_data = self.user_manager.create_user(f"trial_{update.effective_user.id % 10000}", days=1, limit=1)
+            user_suffix = user_id % 10000 if user_id else 1
+            user_data = self.user_manager.create_user(f"trial_{user_suffix}", days=1, limit=1)
             text = (
                 f"✅ <b>Trial Account Created</b>\n\n"
                 f"• <b>Username:</b> <code>{user_data['username']}</code>\n"
@@ -71,6 +101,13 @@ class AxiomTelegramBot:
             await query.edit_message_text(text, parse_mode="HTML")
 
         elif query.data == "list_users":
+            if not self.is_authorized(user_id):
+                await query.edit_message_text(
+                    "🚫 <b>Access Denied: Admin authorization required.</b>",
+                    parse_mode="HTML",
+                )
+                return
+
             users = self.user_manager.list_users()
             user_text = "\n".join([f"• <code>{u['username']}</code> (Limit: {u['limit']})" for u in users[:20]])
             await query.edit_message_text(
@@ -90,3 +127,48 @@ class AxiomTelegramBot:
 
         logger.info("Axiom Telegram Bot starting polling...")
         app.run_polling()
+
+
+def main():
+    """CLI and systemd entrypoint for the Axiom Telegram Bot daemon."""
+    import argparse
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    parser = argparse.ArgumentParser(description="Axiom Telegram Automation Bot")
+    parser.add_argument("--token", help="Telegram Bot API Token", default=None)
+    parser.add_argument("--admin-id", help="Admin Telegram User ID", type=int, default=None)
+    args = parser.parse_args()
+
+    config = load_config()
+    telegram_cfg = config.get("telegram", {})
+
+    token = (
+        args.token
+        or os.environ.get("AXIOM_BOT_TOKEN")
+        or os.environ.get("TELEGRAM_BOT_TOKEN")
+        or os.environ.get("BOT_TOKEN")
+        or telegram_cfg.get("bot_token")
+    )
+
+    admin_id = args.admin_id
+    if admin_id is None:
+        env_admin = (
+            os.environ.get("AXIOM_BOT_ADMIN_ID")
+            or os.environ.get("ADMIN_CHAT_ID")
+            or os.environ.get("ADMIN_ID")
+            or telegram_cfg.get("admin_chat_id")
+        )
+        if env_admin and str(env_admin).strip().isdigit():
+            admin_id = int(str(env_admin).strip())
+
+    if not token:
+        logger.error("No Telegram Bot Token provided. Set AXIOM_BOT_TOKEN or configure axiom.toml.")
+        sys.exit(1)
+
+    bot = AxiomTelegramBot(token=token, admin_id=admin_id)
+    bot.run()
+
+
+if __name__ == "__main__":
+    main()

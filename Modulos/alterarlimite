@@ -2,6 +2,24 @@
 # Axiom VPS Manager — Change Connection Limit Module
 set -euo pipefail
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
 database="/root/usuarios.db"
 touch "$database"
 
@@ -34,20 +52,37 @@ elif grep -qw "$sel" "$database"; then
 fi
 
 if [[ -z "$target_user" ]] || ! id "$target_user" >/dev/null 2>&1; then
-    echo -e "\n\033[1;31m[!] User not found.\033[0m\n"
+    echo -e "\n\033[1;31m[!] User not found or invalid selection.\033[0m\n"
     exit 1
 fi
 
 read -r -p "Enter new connection limit for $target_user [1-999]: " new_limit
-if ! [[ "$new_limit" =~ ^[0-9]+$ ]] || [[ "$new_limit" -lt 1 ]]; then
-    echo -e "\n\033[1;31m[!] Connection limit must be a positive integer.\033[0m\n"
+if ! [[ "$new_limit" =~ ^[0-9]+$ ]] || [[ "$new_limit" -lt 1 ]] || [[ "$new_limit" -gt 999 ]]; then
+    echo -e "\n\033[1;31m[!] Connection limit must be an integer between 1 and 999.\033[0m\n"
     exit 1
 fi
 
-tmp_db=$(mktemp)
+# Atomic update on same filesystem
+tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
 grep -v "^${target_user}[[:space:]]" "$database" > "$tmp_db" || true
 echo "$target_user $new_limit" >> "$tmp_db"
 mv "$tmp_db" "$database"
+chmod 644 "$database"
+
+# Synchronize trial database if applicable
+if [[ -f /etc/VPSManager/trial_users.db ]] && grep -q "^${target_user}[[:space:]]" /etc/VPSManager/trial_users.db; then
+    trial_line=$(grep "^${target_user}[[:space:]]" /etc/VPSManager/trial_users.db | head -n1)
+    exp_e=$(echo "$trial_line" | awk '{print $2}')
+    tmp_t=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+    grep -v "^${target_user}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_t" || true
+    echo "$target_user $exp_e $new_limit" >> "$tmp_t"
+    mv "$tmp_t" /etc/VPSManager/trial_users.db
+    chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
+fi
+
+if type axiom_audit >/dev/null 2>&1; then
+    axiom_audit "USER_CHANGE_LIMIT" "$target_user" "new_limit=$new_limit"
+fi
 
 echo -e "\n\033[1;32m[✓] Limit for '$target_user' successfully updated to $new_limit connection(s).\033[0m\n"
 read -r -p "Press Enter to return to menu..."

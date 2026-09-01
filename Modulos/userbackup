@@ -1,20 +1,29 @@
 #!/usr/bin/env bash
+# Axiom VPS Manager — Secure Backup & Recovery
 set -euo pipefail
 
 BACKUP_DIR="/root/backups"
-mkdir -p -m 700 "$BACKUP_DIR"
+mkdir -p -m 700 "$BACKUP_DIR" 2>/dev/null || true
 
-clear
-echo -e "\033[1;36m======================================\033[0m"
-echo -e "\033[1;33m       Axiom Secure Backup Manager    \033[0m"
-echo -e "\033[1;36m======================================\033[0m"
-echo ""
-echo -e "\033[1;32m[1]\033[0m Create Encrypted Backup"
-echo -e "\033[1;32m[2]\033[0m Restore from Backup"
-echo -e "\033[1;32m[3]\033[0m List Existing Backups"
-echo -e "\033[1;31m[0]\033[0m Return to Menu"
-echo ""
-read -r -p "Select an option [0-3]: " opt
+opt="${1:-}"
+
+if [[ -z "$opt" ]]; then
+    if [[ -t 0 ]]; then
+        clear
+        echo -e "\033[1;36m======================================\033[0m"
+        echo -e "\033[1;33m       Axiom Secure Backup Manager    \033[0m"
+        echo -e "\033[1;36m======================================\033[0m"
+        echo ""
+        echo -e "\033[1;32m[1]\033[0m Create Encrypted Backup"
+        echo -e "\033[1;32m[2]\033[0m Restore from Backup"
+        echo -e "\033[1;32m[3]\033[0m List Existing Backups"
+        echo -e "\033[1;31m[0]\033[0m Return to Menu"
+        echo ""
+        read -r -p "Select an option [0-3]: " opt
+    else
+        opt="1"
+    fi
+fi
 
 case "$opt" in
     1)
@@ -27,7 +36,9 @@ case "$opt" in
         # Include necessary configs without exposing plaintext passwords
         [[ -f /root/usuarios.db ]] && cp /root/usuarios.db "$TMP_DIR/"
         [[ -d /etc/VPSManager ]] && cp -r /etc/VPSManager "$TMP_DIR/"
-        [[ -d /opt/axiom ]] && cp -r /opt/axiom/config "$TMP_DIR/" 2>/dev/null || true
+        [[ -d /etc/wireguard ]] && cp -r /etc/wireguard "$TMP_DIR/" 2>/dev/null || true
+        [[ -d /etc/axiom ]] && cp -r /etc/axiom "$TMP_DIR/" 2>/dev/null || true
+        [[ -d /opt/axiom/config ]] && cp -r /opt/axiom/config "$TMP_DIR/" 2>/dev/null || true
         
         # Pack securely
         tar -czf "$BACKUP_FILE" -C "$TMP_DIR" .
@@ -37,30 +48,44 @@ case "$opt" in
         echo -e "\033[1;32m[✓] Backup created successfully:\033[0m $BACKUP_FILE"
         echo -e "\033[1;33m[!] Note: Backups are stored locally with root-only permissions (chmod 600).\033[0m"
         echo -e "\033[1;33m    Download securely via SFTP / SCP (e.g. scp root@<server_ip>:$BACKUP_FILE .)\033[0m\n"
-        read -r -p "Press Enter to continue..."
+        if [[ -t 0 && -z "${1:-}" ]]; then
+            read -r -p "Press Enter to continue..."
+        fi
         ;;
     2)
-        echo -e "\n\033[1;33mAvailable backups:\033[0m"
-        ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || { echo "No backups found."; exit 0; }
-        echo ""
-        read -r -p "Enter full path to backup file to restore: " RESTORE_FILE
-        if [[ -f "$RESTORE_FILE" ]]; then
+        RESTORE_FILE="${2:-}"
+        if [[ -z "$RESTORE_FILE" ]]; then
+            echo -e "\n\033[1;33mAvailable backups:\033[0m"
+            ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || { echo "No backups found."; exit 0; }
+            echo ""
+            if [[ -t 0 ]]; then
+                read -r -p "Enter full path to backup file to restore: " RESTORE_FILE
+            fi
+        fi
+
+        if [[ -n "$RESTORE_FILE" && -f "$RESTORE_FILE" ]]; then
             TMP_RESTORE=$(mktemp -d)
             tar -xzf "$RESTORE_FILE" -C "$TMP_RESTORE"
             [[ -f "$TMP_RESTORE/usuarios.db" ]] && cp "$TMP_RESTORE/usuarios.db" /root/
             [[ -d "$TMP_RESTORE/VPSManager" ]] && cp -r "$TMP_RESTORE/VPSManager" /etc/
+            [[ -d "$TMP_RESTORE/wireguard" ]] && cp -r "$TMP_RESTORE/wireguard" /etc/
+            [[ -d "$TMP_RESTORE/axiom" ]] && cp -r "$TMP_RESTORE/axiom" /etc/
             rm -rf "$TMP_RESTORE"
             echo -e "\033[1;32m[✓] Restore completed successfully.\033[0m\n"
         else
-            echo -e "\033[1;31m[!] File not found: $RESTORE_FILE\033[0m\n"
+            echo -e "\033[1;31m[!] File not found: ${RESTORE_FILE:-none}\033[0m\n"
         fi
-        read -r -p "Press Enter to continue..."
+        if [[ -t 0 && -z "${1:-}" ]]; then
+            read -r -p "Press Enter to continue..."
+        fi
         ;;
     3)
         echo -e "\n\033[1;33mExisting backups in $BACKUP_DIR:\033[0m"
         ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || echo "No backups found."
         echo ""
-        read -r -p "Press Enter to continue..."
+        if [[ -t 0 && -z "${1:-}" ]]; then
+            read -r -p "Press Enter to continue..."
+        fi
         ;;
     *)
         exit 0

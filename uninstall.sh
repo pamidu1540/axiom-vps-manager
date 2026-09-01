@@ -51,6 +51,8 @@ AXIOM_SERVICES=(
     "axiom-bot.service"
     "axiom-backup.service"
     "axiom-backup.timer"
+    "axiom-limiter.service"
+    "axiom-badvpn.service"
 )
 
 for svc in "${AXIOM_SERVICES[@]}"; do
@@ -86,13 +88,19 @@ if command -v nft >/dev/null 2>&1; then
 fi
 
 if command -v iptables >/dev/null 2>&1; then
-    iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null || true
-    iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null || true
+    while iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null; do :; done
+    while iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null; do :; done
     iptables -F AXIOM_TORRENT 2>/dev/null || true
     iptables -X AXIOM_TORRENT 2>/dev/null || true
 fi
 
-# 6. Remove Binary Symlinks and Installation Directories
+# 6. Remove Shell Profile Hooks
+echo -e "${CLR_BLUE}[*] Cleaning shell login profiles...${CLR_RESET}"
+sed -i '/menu;/d' /etc/profile 2>/dev/null || true
+sed -i '/axiom/d' /etc/profile 2>/dev/null || true
+sed -i '/autostart/d' /etc/profile 2>/dev/null || true
+
+# 7. Remove Binary Symlinks and Installation Directories
 echo -e "${CLR_BLUE}[*] Removing installation files and symlinks...${CLR_RESET}"
 rm -f /usr/local/bin/axiom
 rm -f /usr/local/bin/menu

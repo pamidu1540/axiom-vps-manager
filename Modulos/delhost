@@ -25,19 +25,22 @@ if [[ -z "$host" ]]; then
     exit 1
 fi
 
-if ! grep -q "^$host" "$payload"; then
+if ! grep -Fxq "$host" "$payload"; then
     echo -e "\n\033[1;33m[!] Domain $host not found in $payload\033[0m\n"
     exit 0
 fi
 
 tmp_file=$(mktemp)
-grep -v "^$host" "$payload" > "$tmp_file"
+grep -Fxv "$host" "$payload" | grep -v "^$" > "$tmp_file" || true
+chmod --reference="$payload" "$tmp_file" 2>/dev/null || chmod 644 "$tmp_file"
+chown --reference="$payload" "$tmp_file" 2>/dev/null || true
 mv "$tmp_file" "$payload"
+chmod 644 "$payload" 2>/dev/null || true
 
 # Corrected service reload check
-if systemctl is-active --quiet squid; then
+if systemctl is-active --quiet squid 2>/dev/null; then
     systemctl reload squid
-elif systemctl is-active --quiet squid3; then
+elif systemctl is-active --quiet squid3 2>/dev/null; then
     systemctl reload squid3
 elif [[ -f "/etc/init.d/squid" ]]; then
     service squid reload

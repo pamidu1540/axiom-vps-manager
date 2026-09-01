@@ -57,15 +57,8 @@ tput cnorm
 echo " "
 
 fun_atts () {
-
-  [[ -e /home/versao ]] && rm /home/versao
-
-  [[ -e /tmp/att ]] && rm /tmp/att
-
-	wget -c -P /home https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao
-
-	[[ -f "/home/versao" ]] && mv /home/versao /tmp/att
-
+  rm -f /tmp/att 2>/dev/null || true
+  curl -fsSL -o /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || wget -q -O /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || true
 } > /dev/null 2>&1
 
 echo -e "⚡ Axiom VPS Manager ⚡"
@@ -88,15 +81,26 @@ fun_bar 'fun_atts'
 
 echo " "
 
-vrs1=$(sed -n '1 p' /bin/versao| sed -e 's/[^0-9]//ig')
+local_versao=""
+for vf in /bin/versao /etc/axiom/versao /opt/axiom/versao /etc/VPSManager/versao; do
+    if [[ -f "$vf" ]]; then
+        local_versao="$vf"
+        break
+    fi
+done
+if [[ -n "$local_versao" ]]; then
+    vrs1=$(sed -n '1 p' "$local_versao" | sed -e 's/[^0-9]//g')
+else
+    vrs1="100"
+fi
 
-vrs2=$(sed -n '1 p' /tmp/att | sed -e 's/[^0-9]//ig')
+vrs2=$(sed -n '1 p' /tmp/att | sed -e 's/[^0-9]//g')
 
 [[ "$vrs1" == "$vrs2" ]] && {
 
   echo -e " \033[1;36m   ◇ THE SCRIPT IS NOW UPDATED!\033[1;32m\n"
 
-  rm /tmp/att > /dev/null 2>&1
+  rm -f /tmp/att > /dev/null 2>&1
 
   echo -ne " \033[1;31m◇ ENTER \033[1;33mto return to \033[1;32mMENU!\033[0m"; read
 

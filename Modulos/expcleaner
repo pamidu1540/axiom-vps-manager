@@ -2,8 +2,27 @@
 # Axiom VPS Manager — Expired Accounts Purge Engine
 set -euo pipefail
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
 database="/root/usuarios.db"
 touch "$database"
+trial_db="/etc/VPSManager/trial_users.db"
 datenow=$(date +%s)
 
 clear
@@ -12,6 +31,10 @@ echo -e "\E[44;1;37m Username         Expiry Date       Status                  
 remove_ovp() {
     local user="$1"
     local groupname="nogroup"
+    if ! grep -q "^nogroup:" /etc/group 2>/dev/null; then
+        groupname="nobody"
+    fi
+
     if [[ -d /etc/openvpn/easy-rsa ]]; then
         (
             cd /etc/openvpn/easy-rsa/
@@ -19,10 +42,11 @@ remove_ovp() {
             ./easyrsa gen-crl 2>/dev/null || true
             rm -f "pki/reqs/$user.req" "pki/private/$user.key" "pki/issued/$user.crt"
             cp pki/crl.pem /etc/openvpn/crl.pem 2>/dev/null || true
+            chmod 644 /etc/openvpn/crl.pem 2>/dev/null || true
             chown "nobody:$groupname" /etc/openvpn/crl.pem 2>/dev/null || true
         )
     fi
-    rm -f "$HOME/$user.ovpn"
+    rm -f "$HOME/$user.ovpn" "/root/$user.ovpn"
     rm -f "/var/www/html/openvpn/$user.zip" 2>/dev/null || true
 }
 
@@ -34,6 +58,13 @@ for user in "${users_list[@]}"; do
         continue
     fi
 
+    # System account protection (UID >= 1000 and non-root)
+    u_uid=$(id -u "$user" 2>/dev/null || echo "0")
+    if (( u_uid < 1000 )) || [[ "$user" == "root" ]]; then
+        printf ' %-16s %-17s \033[1;33mProtected System Account\033[0m\n' "$user" "UID $u_uid"
+        continue
+    fi
+
     expdate=$(chage -l "$user" 2>/dev/null | awk -F: '/Account expires/{print $2}' | xargs || echo "never")
     if [[ "$expdate" == "never" || -z "$expdate" ]]; then
         printf ' %-16s %-17s \033[1;33mNever Expiring\033[0m\n' "$user" "Never"
@@ -41,22 +72,79 @@ for user in "${users_list[@]}"; do
     fi
 
     datanormal=$(date -d "$expdate" '+%d/%m/%Y' 2>/dev/null || echo "$expdate")
-    expsec=$(date +%s --date="$expdate" 2>/dev/null || echo "$datenow")
+    # Evaluate at end of expiration day (23:59:59) so accounts are not cut off at 00:00:00
+    expsec=$(date +%s --date="$expdate 23:59:59" 2>/dev/null || date +%s --date="$expdate" 2>/dev/null || echo "$datenow")
 
-    if (( datenow >= expsec )); then
+    if (( datenow > expsec )); then
         printf ' %-16s %-17s \033[1;31mExpired — Removed\033[0m\n' "$user" "$datanormal"
         pkill -u "$user" 2>/dev/null || true
         userdel -f "$user" 2>/dev/null || true
         
-        tmp_db=$(mktemp)
+        tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
         grep -v "^${user}[[:space:]]" "$database" > "$tmp_db" || true
         mv "$tmp_db" "$database"
+        chmod 644 "$database"
         
+        if [[ -f "$trial_db" ]]; then
+            tmp_t=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+            grep -v "^${user}[[:space:]]" "$trial_db" > "$tmp_t" || true
+            mv "$tmp_t" "$trial_db"
+            chmod 644 "$trial_db" 2>/dev/null || true
+        fi
+        rm -f "/etc/VPSManager/userteste/${user}.sh"
+
         [[ -e /etc/openvpn/server.conf ]] && remove_ovp "$user"
+
+        if type axiom_audit >/dev/null 2>&1; then
+            axiom_audit "USER_PURGE_EXPIRED" "$user" "expiry=$datanormal"
+        fi
     else
         printf ' %-16s %-17s \033[1;32mActive (Valid)\033[0m\n' "$user" "$datanormal"
     fi
 done
+
+# Fallback sweep for trial accounts from trial_users.db
+if [[ -f "$trial_db" ]]; then
+    mapfile -t trial_list < "$trial_db"
+    for line in "${trial_list[@]}"; do
+        [[ -z "$line" ]] && continue
+        t_user=$(echo "$line" | awk '{print $1}')
+        t_exp=$(echo "$line" | awk '{print $2}')
+        [[ -z "$t_user" || -z "$t_exp" ]] && continue
+        
+        if ! id "$t_user" >/dev/null 2>&1; then
+            continue
+        fi
+
+        t_uid=$(id -u "$t_user" 2>/dev/null || echo "0")
+        if (( t_uid < 1000 )) || [[ "$t_user" == "root" ]]; then
+            continue
+        fi
+
+        if (( datenow >= t_exp )); then
+            printf ' %-16s %-17s \033[1;31mTrial Expired — Removed\033[0m\n' "$t_user" "Trial"
+            pkill -u "$t_user" 2>/dev/null || true
+            userdel -f "$t_user" 2>/dev/null || true
+            
+            tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
+            grep -v "^${t_user}[[:space:]]" "$database" > "$tmp_db" || true
+            mv "$tmp_db" "$database"
+            chmod 644 "$database"
+            
+            tmp_t=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
+            grep -v "^${t_user}[[:space:]]" "$trial_db" > "$tmp_t" || true
+            mv "$tmp_t" "$trial_db"
+            chmod 644 "$trial_db" 2>/dev/null || true
+            
+            rm -f "/etc/VPSManager/userteste/${t_user}.sh"
+            [[ -e /etc/openvpn/server.conf ]] && remove_ovp "$t_user"
+
+            if type axiom_audit >/dev/null 2>&1; then
+                axiom_audit "TRIAL_PURGE_EXPIRED" "$t_user" "exp_epoch=$t_exp"
+            fi
+        fi
+    done
+fi
 
 mkdir -p /etc/VPSManager
 echo "0" > /etc/VPSManager/Exp

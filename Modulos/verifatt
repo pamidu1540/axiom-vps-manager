@@ -1,8 +1,25 @@
 #!/bin/bash
 clear
-wget -P /home https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao > /dev/null 2>&1
-[[ -f "/home/versao" ]] && {
-	vrs1=$(sed -n '1 p' /bin/versao| sed -e 's/[^0-9]//ig')
-    vrs2=$(sed -n '1 p' /home/versao | sed -e 's/[^0-9]//ig')
-	[[ "$vrs1" != "$vrs2" ]] && mv /home/versao /tmp/att
-}
+tmp_vrs=$(mktemp)
+if curl -fsSL -o "$tmp_vrs" https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || wget -q -O "$tmp_vrs" https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null; then
+    local_versao=""
+    for vf in /bin/versao /etc/axiom/versao /opt/axiom/versao /etc/VPSManager/versao; do
+        if [[ -f "$vf" ]]; then
+            local_versao="$vf"
+            break
+        fi
+    done
+    if [[ -n "$local_versao" ]]; then
+        vrs1=$(sed -n '1 p' "$local_versao" | sed -e 's/[^0-9]//g')
+    else
+        vrs1="100"
+    fi
+    vrs2=$(sed -n '1 p' "$tmp_vrs" | sed -e 's/[^0-9]//g')
+    if [[ "$vrs1" != "$vrs2" && -n "$vrs2" ]]; then
+        mv "$tmp_vrs" /tmp/att
+    else
+        rm -f "$tmp_vrs"
+    fi
+else
+    rm -f "$tmp_vrs"
+fi

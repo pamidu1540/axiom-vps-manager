@@ -2,7 +2,25 @@
 # Axiom VPS Manager — Account Creation Module
 set -euo pipefail
 
-IP=$(cat /etc/IP 2>/dev/null || curl -s -4 ifconfig.me || echo "127.0.0.1")
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    exit 1
+fi
+
+IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me || echo "127.0.0.1")
 cor1='\033[41;1;37m'
 cor2='\033[44;1;37m'
 scor='\033[0m'
@@ -26,7 +44,7 @@ fi
 read -r -s -p "Enter password (leave empty to generate random): " password
 echo ""
 if [[ -z "$password" ]]; then
-    password=$(tr -dc A-Za-z0-9 </dev/urandom | head -c 12 || echo "$((RANDOM % 899999 + 100000))")
+    password=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 12 || echo "Ax$(date +%s%N | tail -c 8)")
 fi
 
 read -r -p "Validity period in days [default 30]: " dias
@@ -38,8 +56,8 @@ fi
 
 read -r -p "Connection limit [default 1]: " sshlimiter
 sshlimiter="${sshlimiter:-1}"
-if ! [[ "$sshlimiter" =~ ^[0-9]+$ ]] || [[ "$sshlimiter" -lt 1 ]]; then
-    echo -e "\n${cor1}Connection limit must be a positive integer.${scor}\n"
+if ! [[ "$sshlimiter" =~ ^[0-9]+$ ]] || [[ "$sshlimiter" -lt 1 ]] || [[ "$sshlimiter" -gt 999 ]]; then
+    echo -e "\n${cor1}Connection limit must be a positive integer (1-999).${scor}\n"
     exit 1
 fi
 
@@ -50,12 +68,13 @@ display_date=$(date "+%d/%m/%Y" -d "+$dias days")
 useradd -e "$final_date" -M -s /bin/false "$username" >/dev/null 2>&1
 echo "$username:$password" | chpasswd
 
-# Update database
+# Update database atomically on the same filesystem
 touch /root/usuarios.db
-tmp_db=$(mktemp)
+tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
 grep -v "^${username}[[:space:]]" /root/usuarios.db > "$tmp_db" || true
 echo "$username $sshlimiter" >> "$tmp_db"
 mv "$tmp_db" /root/usuarios.db
+chmod 644 /root/usuarios.db
 
 # OpenVPN client profile generation (if OpenVPN is configured)
 if [[ -d /etc/openvpn/easy-rsa && -f /etc/openvpn/client-common.txt ]]; then
@@ -74,6 +93,10 @@ if [[ -d /etc/openvpn/easy-rsa && -f /etc/openvpn/client-common.txt ]]; then
         echo "</key>" >> "/root/${username}.ovpn"
         chmod 600 "/root/${username}.ovpn"
     ) || true
+fi
+
+if type axiom_audit >/dev/null 2>&1; then
+    axiom_audit "USER_CREATE" "$username" "days=$dias,limit=$sshlimiter"
 fi
 
 clear
