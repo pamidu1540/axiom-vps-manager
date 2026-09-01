@@ -1,23 +1,23 @@
 """
 Axiom VPS Manager — Main Command-Line Interface Dispatcher
 """
-import sys
+
 import argparse
-from axiom.users.manager import UserManager
-from axiom.tui.dashboard import Dashboard
+
 from axiom.firewall.nft_manager import NFTablesManager
+from axiom.monitor.bandwidth import BandwidthMonitor
 from axiom.security.scanner import SecurityScanner
-from axiom.users.backup import BackupEngine
+from axiom.services.qrcode_gen import QRCodeGenerator
 from axiom.services.wireguard import WireGuardService
 from axiom.services.xray import XrayService
-from axiom.services.qrcode_gen import QRCodeGenerator
-from axiom.monitor.bandwidth import BandwidthMonitor
+from axiom.tui.dashboard import Dashboard
+from axiom.users.backup import BackupEngine
+from axiom.users.manager import UserManager
 
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="axiom",
-        description="⚡ Axiom VPS Manager — Modern, Secure Tunneling & VPS Management Platform"
+        prog="axiom", description="⚡ Axiom VPS Manager — Modern, Secure Tunneling & VPS Management Platform"
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
@@ -27,7 +27,7 @@ def main():
     # User Management
     user_parser = subparsers.add_parser("user", help="User account management")
     user_sub = user_parser.add_subparsers(dest="user_action")
-    
+
     # user create
     create_p = user_sub.add_parser("create", help="Create a new user")
     create_p.add_argument("username", help="Username to create")
@@ -146,7 +146,9 @@ def main():
     elif args.command == "xray":
         if args.xray_action == "add-client":
             xray = XrayService()
-            uri = xray.generate_client_uri("12345678-1234-1234-1234-123456789abc", "127.0.0.1", "sample_public_key", "sample_id")
+            uri = xray.generate_client_uri(
+                "12345678-1234-1234-1234-123456789abc", "127.0.0.1", "sample_public_key", "sample_id"
+            )
             print(f"✅ Xray VLESS Reality URI:\n{uri}\n")
             print(QRCodeGenerator.generate_terminal_qr(uri))
 
@@ -158,8 +160,9 @@ def main():
         print(f"   Total    : {stats['total_gb']} GB")
 
     elif args.command == "uninstall":
-        import subprocess
         import os
+        import subprocess
+
         uninstall_script = "/opt/axiom/uninstall.sh"
         if not os.path.exists(uninstall_script):
             uninstall_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uninstall.sh")

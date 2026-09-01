@@ -2,28 +2,30 @@
 Axiom Async Telegram Bot Module
 Built on python-telegram-bot v22.8 (Bot API 9.6) with non-blocking async architecture.
 """
+
 import logging
-from typing import Optional
-from axiom.users.manager import UserManager
+
 from axiom.monitor.stats import SystemMonitor
+from axiom.users.manager import UserManager
 
 logger = logging.getLogger("AxiomTelegramBot")
 
 try:
-    from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+    from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
     from telegram.ext import (
         Application,
-        CommandHandler,
         CallbackQueryHandler,
+        CommandHandler,
         ContextTypes,
     )
+
     PTB_AVAILABLE = True
 except ImportError:
     PTB_AVAILABLE = False
 
 
 class AxiomTelegramBot:
-    def __init__(self, token: str, admin_id: Optional[int] = None):
+    def __init__(self, token: str, admin_id: int | None = None):
         self.token = token
         self.admin_id = admin_id
         self.user_manager = UserManager()
@@ -39,7 +41,7 @@ class AxiomTelegramBot:
         await update.message.reply_text(
             "<b>⚡ Welcome to Axiom VPS Manager ⚡</b>\nSelect an option below:",
             reply_markup=reply_markup,
-            parse_mode="HTML"
+            parse_mode="HTML",
         )
 
     async def button_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -71,7 +73,9 @@ class AxiomTelegramBot:
         elif query.data == "list_users":
             users = self.user_manager.list_users()
             user_text = "\n".join([f"• <code>{u['username']}</code> (Limit: {u['limit']})" for u in users[:20]])
-            await query.edit_message_text(f"<b>👥 Active Accounts ({len(users)})</b>\n\n{user_text or 'No accounts found.'}", parse_mode="HTML")
+            await query.edit_message_text(
+                f"<b>👥 Active Accounts ({len(users)})</b>\n\n{user_text or 'No accounts found.'}", parse_mode="HTML"
+            )
 
     def run(self):
         """Starts the async polling bot daemon."""

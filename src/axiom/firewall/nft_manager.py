@@ -2,9 +2,9 @@
 Axiom nftables Firewall Manager
 Manages isolated nftables chains for ports, rate limits, and GeoIP filters without flushing base system rules.
 """
-import subprocess
+
 import logging
-from typing import List
+import subprocess
 
 logger = logging.getLogger("AxiomFirewall")
 
@@ -52,7 +52,9 @@ class NFTablesManager:
     def apply_base_firewall(self) -> bool:
         """Applies the default hardened Axiom nftables ruleset."""
         try:
-            p = subprocess.Popen(["nft", "-f", "-"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            p = subprocess.Popen(
+                ["nft", "-f", "-"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
             stdout, stderr = p.communicate(input=NFT_BASE_TEMPLATE)
             if p.returncode == 0:
                 logger.info("Successfully applied nftables ruleset.")

@@ -2,23 +2,24 @@
 Axiom REST API Server
 Provides authenticated endpoints for mobile apps, web dashboards, and remote server management.
 """
-from typing import Dict, Any, List
-from axiom.users.manager import UserManager
+
+from typing import Any
+
 from axiom.monitor.stats import SystemMonitor
 from axiom.security.scanner import SecurityScanner
+from axiom.users.manager import UserManager
 
 try:
-    from fastapi import FastAPI, HTTPException, Header, Depends
     import uvicorn
+    from fastapi import Depends, FastAPI, Header, HTTPException
+
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
 
 if FASTAPI_AVAILABLE:
     app = FastAPI(
-        title="Axiom VPS Manager API",
-        version="1.0.0",
-        description="RESTful management endpoints for Axiom VPS Manager"
+        title="Axiom VPS Manager API", version="1.0.0", description="RESTful management endpoints for Axiom VPS Manager"
     )
 
     API_SECRET_TOKEN = "axiom_secure_token"
@@ -29,24 +30,24 @@ if FASTAPI_AVAILABLE:
         return x_api_key
 
     @app.get("/api/v1/status", dependencies=[Depends(verify_token)])
-    def get_status() -> Dict[str, Any]:
+    def get_status() -> dict[str, Any]:
         """Returns live system telemetry and health metrics."""
         return SystemMonitor.get_system_metrics()
 
     @app.get("/api/v1/users", dependencies=[Depends(verify_token)])
-    def list_users() -> List[Dict[str, str]]:
+    def list_users() -> list[dict[str, str]]:
         """Returns all managed user accounts."""
         manager = UserManager()
         return manager.list_users()
 
     @app.post("/api/v1/users", dependencies=[Depends(verify_token)])
-    def create_user(username: str, days: int = 30, limit: int = 1) -> Dict[str, str]:
+    def create_user(username: str, days: int = 30, limit: int = 1) -> dict[str, str]:
         """Provisions a new user account."""
         manager = UserManager()
         return manager.create_user(username=username, days=days, limit=limit)
 
     @app.delete("/api/v1/users/{username}", dependencies=[Depends(verify_token)])
-    def delete_user(username: str) -> Dict[str, str]:
+    def delete_user(username: str) -> dict[str, str]:
         """Revokes and terminates a user account."""
         manager = UserManager()
         if manager.delete_user(username):
@@ -54,7 +55,7 @@ if FASTAPI_AVAILABLE:
         raise HTTPException(status_code=404, detail="User deletion failed")
 
     @app.get("/api/v1/security/audit", dependencies=[Depends(verify_token)])
-    def security_audit() -> Dict[str, Any]:
+    def security_audit() -> dict[str, Any]:
         """Performs a live security audit on the VPS."""
         return SecurityScanner.audit_system()
 

@@ -1,9 +1,11 @@
 """
 Unit tests for Axiom user manager
 """
+
 import os
 import sys
 import tempfile
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from axiom.users.manager import UserManager
@@ -19,7 +21,7 @@ def test_generate_password():
 def test_user_db_operations():
     tmp_db = tempfile.mktemp()
     mgr = UserManager(db_path=tmp_db)
-    
+
     mgr._set_user_limit("testuser", 2)
     users = mgr.list_users()
     assert len(users) == 1

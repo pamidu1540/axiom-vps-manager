@@ -22,6 +22,17 @@ dependencies = [
 [project.scripts]
 axiom = "axiom.cli:main"
 
+[tool.ruff]
+target-version = "py313"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4"]
+ignore = ["E501", "B008", "UP007", "UP045"]
+
+[tool.ruff.lint.isort]
+combine-as-imports = true
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]

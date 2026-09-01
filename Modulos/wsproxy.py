@@ -3,17 +3,14 @@
 Axiom WebSocket (HTTP/1.1 101 Switching Protocols) Tunnel Proxy
 Modernized for Python 3.14+ supporting custom CDN headers and payload upgrades.
 """
-import sys
-import socket
-import select
-import threading
-import logging
-from typing import Optional
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
-)
+import logging
+import select
+import socket
+import sys
+import threading
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("AxiomWSProxy")
 
 BUFLEN = 65536
@@ -33,7 +30,7 @@ class WSConnectionHandler(threading.Thread):
         self.client_sock = client_sock
         self.client_addr = client_addr
         self.target_str = target_str
-        self.target_sock: Optional[socket.socket] = None
+        self.target_sock: socket.socket | None = None
         self.running = True
 
     def close(self):
@@ -97,7 +94,7 @@ class WSProxyServer:
         self.bind_host = bind_host
         self.bind_port = bind_port
         self.target = target
-        self.server_sock: Optional[socket.socket] = None
+        self.server_sock: socket.socket | None = None
         self.running = False
 
     def start(self):

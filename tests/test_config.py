@@ -1,8 +1,10 @@
 """
 Unit tests for Axiom configuration loader
 """
+
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 from axiom.config import load_config

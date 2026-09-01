@@ -1,9 +1,10 @@
 """
 Axiom Configuration Loader using Python 3.11+ native tomllib
 """
+
 import os
 import tomllib
-from typing import Any, Dict, Optional
+from typing import Any
 
 CONFIG_PATHS = [
     "/etc/axiom/axiom.toml",
@@ -12,7 +13,7 @@ CONFIG_PATHS = [
 ]
 
 
-def load_config(custom_path: Optional[str] = None) -> Dict[str, Any]:
+def load_config(custom_path: str | None = None) -> dict[str, Any]:
     """Loads and parses the Axiom TOML configuration file."""
     if custom_path and os.path.isfile(custom_path):
         with open(custom_path, "rb") as f:

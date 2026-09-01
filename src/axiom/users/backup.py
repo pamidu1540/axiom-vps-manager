@@ -2,12 +2,11 @@
 Axiom Secure Backup & Disaster Recovery Engine
 Archives system user databases, WireGuard keys, and Axiom configuration into local root-only archives.
 """
+
+import datetime
+import logging
 import os
 import tarfile
-import datetime
-import shutil
-import logging
-from typing import Optional, List
 
 logger = logging.getLogger("AxiomBackup")
 BACKUP_DIR = "/root/backups"
@@ -18,18 +17,12 @@ class BackupEngine:
         self.backup_dir = backup_dir
         os.makedirs(self.backup_dir, mode=0o700, exist_ok=True)
 
-    def create_backup(self) -> Optional[str]:
+    def create_backup(self) -> str | None:
         """Creates a timestamped tar.gz archive of configuration files."""
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         archive_path = os.path.join(self.backup_dir, f"axiom_backup_{timestamp}.tar.gz")
 
-        targets = [
-            "/root/usuarios.db",
-            "/etc/VPSManager",
-            "/etc/wireguard",
-            "/etc/axiom",
-            "/opt/axiom/config"
-        ]
+        targets = ["/root/usuarios.db", "/etc/VPSManager", "/etc/wireguard", "/etc/axiom", "/opt/axiom/config"]
 
         try:
             with tarfile.open(archive_path, "w:gz") as tar:
@@ -43,12 +36,15 @@ class BackupEngine:
             logger.error("Failed to create backup: %s", e)
             return None
 
-    def list_backups(self) -> List[str]:
+    def list_backups(self) -> list[str]:
         """Returns all existing backup archive paths."""
         if not os.path.exists(self.backup_dir):
             return []
-        return sorted([
-            os.path.join(self.backup_dir, f)
-            for f in os.listdir(self.backup_dir)
-            if f.startswith("axiom_backup_") and f.endswith(".tar.gz")
-        ], reverse=True)
+        return sorted(
+            [
+                os.path.join(self.backup_dir, f)
+                for f in os.listdir(self.backup_dir)
+                if f.startswith("axiom_backup_") and f.endswith(".tar.gz")
+            ],
+            reverse=True,
+        )

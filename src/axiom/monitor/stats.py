@@ -2,15 +2,16 @@
 Axiom System & Telemetry Monitor
 Extracts CPU, RAM, disk, vnStat traffic counters, and active session counts.
 """
+
 import os
 import shutil
 import subprocess
-from typing import Dict, Any
+from typing import Any
 
 
 class SystemMonitor:
     @staticmethod
-    def get_system_metrics() -> Dict[str, Any]:
+    def get_system_metrics() -> dict[str, Any]:
         """Gathers basic system health statistics."""
         # Disk usage
         total, used, free = shutil.disk_usage("/")
@@ -19,7 +20,7 @@ class SystemMonitor:
         # Memory usage via /proc/meminfo
         mem_total, mem_available = 0, 0
         if os.path.exists("/proc/meminfo"):
-            with open("/proc/meminfo", "r", encoding="utf-8") as f:
+            with open("/proc/meminfo", encoding="utf-8") as f:
                 for line in f:
                     if line.startswith("MemTotal:"):
                         mem_total = int(line.split()[1])
@@ -37,11 +38,11 @@ class SystemMonitor:
             pass
 
         return {
-            "disk_used_gb": round(used / (1024 ** 3), 1),
-            "disk_total_gb": round(total / (1024 ** 3), 1),
+            "disk_used_gb": round(used / (1024**3), 1),
+            "disk_total_gb": round(total / (1024**3), 1),
             "disk_percent": round(disk_pct, 1),
             "mem_used_mb": round(mem_used / 1024, 1),
             "mem_total_mb": round(mem_total / 1024, 1),
             "mem_percent": round(mem_pct, 1),
-            "online_users": online_sessions
+            "online_users": online_sessions,
         }

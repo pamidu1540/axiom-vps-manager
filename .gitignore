@@ -1,0 +1,22 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Virtual Environments
+.venv/
+venv/
+ENV/
+env/
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+
+# Backup archives
+*.tar.gz
+*.zip
+root/backups/
