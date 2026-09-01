@@ -38,14 +38,10 @@ fun_botOnOff() {
         echo -ne "\033[1;32m◇ INFORM YOUR TELEGRAM ID:\033[1;37m "
         read iduser
         clear
-        echo -e "\033[1;32mㅤ🐉ㅤDRAGON VPS MANAGERㅤTELE BOT STARTING...ㅤ🐉ㅤ\033[0m\n"
         fun_bot1() {
-        	[[ "$(grep -wc '16' /etc/issue.net)" != '0' ]] && {
-        		wget -qO- https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/Install/ShellBot.sh > /etc/VPSManager/ShellBot.sh
-        	}
-            [[ ! -e "/etc/VPSManager/ShellBot.sh" ]] && {
-				wget -qO- https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/Install/ShellBot.sh >/etc/VPSManager/ShellBot.sh
-			}
+            [[ ! -f "/etc/VPSManager/ShellBot.sh" ]] && {
+                curl -sSL -o /etc/VPSManager/ShellBot.sh https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/ShellBot.sh >/dev/null 2>&1 || true
+            }
             cd /etc/VPSManager
             screen -dmS bot_plus ./bot $tokenbot $iduser >/dev/null 2>&1
             [[ $(grep -wc "bot_plus" /etc/autostart) = '0' ]] && {

@@ -1,6 +1,6 @@
 #!/bin/bash
 clear
-wget -P /home https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/Install/versao > /dev/null 2>&1
+wget -P /home https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao > /dev/null 2>&1
 [[ -f "/home/versao" ]] && {
 	vrs1=$(sed -n '1 p' /bin/versao| sed -e 's/[^0-9]//ig')
     vrs2=$(sed -n '1 p' /home/versao | sed -e 's/[^0-9]//ig')

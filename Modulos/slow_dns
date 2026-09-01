@@ -22,7 +22,7 @@ installslowdns() {
 
     mkdir -p "$DIR"
     if [[ ! -f "$DIR/dns-server" ]]; then
-        curl -sSL -o "$DIR/dns-server" https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/Modulos/dns-server || true
+        curl -sSL -o "$DIR/dns-server" https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Modulos/dns-server || true
         chmod 755 "$DIR/dns-server"
     fi
 

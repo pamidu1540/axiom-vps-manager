@@ -53,14 +53,10 @@ fun_badvpn() {
                 sleep 1
             }
             inst_udp () {
-                [[ -e "/bin/badvpn-udpgw" ]] && {
-                    sleep 0.1
-                } || {
-                    cd $HOME
-                    wget https://github.com/januda-ui/DRAGON-VPS-MANAGER/raw/main/Modulos/badvpn-udpgw -o /dev/null
-                    mv -f $HOME/badvpn-udpgw /bin/badvpn-udpgw
-                    chmod 777 /bin/badvpn-udpgw
-                }
+                if [[ ! -f "/bin/badvpn-udpgw" ]]; then
+                    curl -sSL -o /bin/badvpn-udpgw https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Modulos/badvpn-udpgw 2>/dev/null || true
+                    chmod 755 /bin/badvpn-udpgw 2>/dev/null || true
+                fi
             }
             echo ""
             inst_udp

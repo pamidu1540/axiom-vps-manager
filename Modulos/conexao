@@ -723,7 +723,9 @@ SCOLOR='\033[0m'
 					#cat cert.pem key.pem >>/etc/stunnel/stunnel.pem
 					#rm key.pem cert.pem >/dev/null 2>&1
 					sed -i 's/ENABLED=0/ENABLED=1/g' /etc/default/stunnel4
-					cd /etc/stunnel && wget https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/Sistema/script/stunnel.pem && cd $HOME
+					mkdir -p /etc/stunnel
+					openssl req -new -x509 -days 3650 -nodes -newkey rsa:2048 -subj "/CN=axiom" -keyout /etc/stunnel/stunnel.pem -out /etc/stunnel/stunnel.pem >/dev/null 2>&1 || true
+					chmod 600 /etc/stunnel/stunnel.pem 2>/dev/null || true
 				}
 				fun_bar 'ssl_certif'
 				echo -e "\n\033[1;32mSTARTING SSL TUNNEL !\033[0m"
@@ -1227,9 +1229,9 @@ SCOLOR='\033[0m'
 			# Adquirindo easy-rsa
 			echo ""
 			fun_dep() {
-				wget -O ~/EasyRSA-3.0.1.tgz "https://github.com/januda-ui/DRAGON-VPS-MANAGER/raw/main/Install/EasyRSA-3.0.1.tgz"
+				wget -O ~/EasyRSA-3.0.1.tgz "https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/EasyRSA-3.0.1.tgz" 2>/dev/null || true
 				[[ ! -e $HOME/EasyRSA-3.0.1.tgz ]] && {
-					wget -O ~/EasyRSA-3.0.1.tgz "http://sshplus.xyz/script/EasyRSA-3.0.1.tgz"
+					wget -O ~/EasyRSA-3.0.1.tgz "https://github.com/OpenVPN/easy-rsa/releases/download/v3.0.1/EasyRSA-3.0.1.tgz" 2>/dev/null || true
 				}
 				tar xzf ~/EasyRSA-3.0.1.tgz -C ~/
 				mv ~/EasyRSA-3.0.1/ /etc/openvpn/

@@ -3,7 +3,7 @@
 # ⚡ Axiom VPS Manager ⚡
 **Modern, Secure, High-Performance VPS Tunneling & Management Platform**
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/januda-ui/DRAGON-VPS-MANAGER/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.0)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 [![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
 [![Ubuntu 22.04 | 24.04](https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04%20LTS-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com)
@@ -75,7 +75,7 @@
 Run the secure installer as `root`:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/install.sh -o install.sh && bash install.sh
+curl -fsSL https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/install.sh -o install.sh && bash install.sh
 ```
 
 ### Main CLI Command
