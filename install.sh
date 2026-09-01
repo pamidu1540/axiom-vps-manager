@@ -72,6 +72,7 @@ PACKAGES=(
     "cron"
     "openssh-server"
     "screen"
+    "speedtest-cli"
     "git"
 )
 
