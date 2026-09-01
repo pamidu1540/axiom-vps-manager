@@ -99,11 +99,13 @@ echo -e "${CLR_BLUE}[*] Cleaning shell login profiles...${CLR_RESET}"
 sed -i '/menu;/d' /etc/profile 2>/dev/null || true
 sed -i '/axiom/d' /etc/profile 2>/dev/null || true
 sed -i '/autostart/d' /etc/profile 2>/dev/null || true
+rm -f /etc/profile.d/axiom.sh 2>/dev/null || true
 
 # 7. Remove Binary Symlinks and Installation Directories
 echo -e "${CLR_BLUE}[*] Removing installation files and symlinks...${CLR_RESET}"
-rm -f /usr/local/bin/axiom
-rm -f /usr/local/bin/menu
+rm -f /usr/local/bin/axiom /bin/axiom /usr/bin/axiom 2>/dev/null || true
+rm -f /usr/local/bin/menu /bin/menu /usr/bin/menu 2>/dev/null || true
+rm -f /usr/local/bin/axiom-uninstall /bin/axiom-uninstall /usr/bin/axiom-uninstall 2>/dev/null || true
 rm -rf /opt/axiom
 rm -rf /etc/axiom
 rm -rf /var/log/axiom
@@ -112,19 +114,19 @@ rm -f /etc/IP
 rm -f /etc/Plus-torrent
 rm -f /etc/autostart
 
-# Clean legacy binaries from /bin if present
-LEGACY_BINS=(
+# Clean binaries from /usr/local/bin, /bin, and /usr/bin
+ALL_BINS=(
     "addhost" "delhost" "alterarsenha" "criarusuario" "expcleaner" "mudardata"
     "remover" "criarteste" "verifbot" "droplimiter" "alterarlimite" "ajuda"
-    "sshmonitor" "badvpn" "userbackup" "instsqd" "blockt" "otimizar" "speedtest"
+    "sshmonitor" "badvpn" "badvpn-udpgw" "userbackup" "instsqd" "blockt" "otimizar" "speedtest"
     "banner" "senharoot" "reiniciarservicos" "reiniciarsistema" "attscript"
     "conexao" "delscript" "detalhes" "botssh" "botteste" "botgen" "infousers"
     "verifatt" "limiter" "uexpired" "cabecalho" "bot" "botsshteste" "botgerador"
-    "slow_dns" "slowdns" "versao"
+    "slow_dns" "slowdns" "versao" "dns" "dns-server" "onlineapp.sh" "open.py" "proxy.py" "wsproxy.py"
 )
 
-for bin in "${LEGACY_BINS[@]}"; do
-    rm -f "/bin/$bin" "/usr/bin/$bin"
+for bin in "${ALL_BINS[@]}"; do
+    rm -f "/usr/local/bin/$bin" "/bin/$bin" "/usr/bin/$bin" 2>/dev/null || true
 done
 
 echo -e "\n${CLR_GREEN}======================================================${CLR_RESET}"

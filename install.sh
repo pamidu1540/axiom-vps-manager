@@ -71,6 +71,7 @@ PACKAGES=(
     "nftables"
     "cron"
     "openssh-server"
+    "screen"
     "git"
 )
 
@@ -87,23 +88,29 @@ mkdir -p -m 755 "$INSTALL_DIR"
 mkdir -p -m 700 "$BACKUP_DIR"
 mkdir -p -m 755 /var/log/axiom
 mkdir -p -m 755 /etc/axiom
+mkdir -p -m 755 /etc/axiom/lib
 mkdir -p -m 755 /etc/VPSManager
 mkdir -p -m 755 /etc/VPSManager/userteste
 mkdir -p -m 700 /etc/VPSManager/.tmp
 touch /root/usuarios.db
+chmod 600 /root/usuarios.db 2>/dev/null || true
 
 # 5. Ingest or Download Codebase
 echo -e "${CLR_BLUE}[*] Fetching Axiom components from GitHub repository...${CLR_RESET}"
 
-if [[ -d "$(dirname "$0")/Modulos" ]]; then
-    echo -e "    -> Installing from local workspace..."
-    cp -r "$(dirname "$0")"/* "$INSTALL_DIR/" 2>/dev/null || true
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
+if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/Modulos" && -f "$SCRIPT_DIR/install.sh" ]]; then
+    echo -e "    -> Installing from local workspace ($SCRIPT_DIR)..."
+    cp -rf "$SCRIPT_DIR"/* "$INSTALL_DIR/" 2>/dev/null || true
 else
     echo -e "    -> Fetching latest release archive from ${GITHUB_REPO_URL}..."
     TMP_DIR=$(mktemp -d)
     if curl -fsSL "${GITHUB_REPO_URL}/archive/refs/heads/${REPO_BRANCH}.tar.gz" -o "$TMP_DIR/axiom.tar.gz"; then
         tar -xzf "$TMP_DIR/axiom.tar.gz" -C "$TMP_DIR"
-        cp -r "$TMP_DIR/${REPO_NAME}-${REPO_BRANCH}"/* "$INSTALL_DIR/"
+        EXTRACTED_DIR=$(find "$TMP_DIR" -mindepth 1 -maxdepth 1 -type d | head -n 1)
+        if [[ -n "$EXTRACTED_DIR" && -d "$EXTRACTED_DIR/Modulos" ]]; then
+            cp -rf "$EXTRACTED_DIR"/* "$INSTALL_DIR/"
+        fi
         rm -rf "$TMP_DIR"
     else
         echo -e "    -> Falling back to git clone..."
@@ -116,14 +123,66 @@ fi
 chmod -R 755 "$INSTALL_DIR"/Modulos/* 2>/dev/null || true
 chmod -R 755 "$INSTALL_DIR"/lib/* 2>/dev/null || true
 chmod 755 "$INSTALL_DIR"/install.sh 2>/dev/null || true
+chmod 755 "$INSTALL_DIR"/uninstall.sh 2>/dev/null || true
 
-# 6. Setup CLI Symlinks
+# Sync common library to /etc/axiom/lib
+if [[ -d "$INSTALL_DIR/lib" ]]; then
+    cp -rf "$INSTALL_DIR/lib"/* /etc/axiom/lib/ 2>/dev/null || true
+    chmod -R 755 /etc/axiom/lib/* 2>/dev/null || true
+fi
+
+# 6. Setup CLI Symlinks for ALL modules and commands
+echo -e "${CLR_BLUE}[*] Registering global command symlinks in /usr/local/bin and /bin...${CLR_RESET}"
+if [[ -d "$INSTALL_DIR/Modulos" ]]; then
+    for mod in "$INSTALL_DIR/Modulos"/*; do
+        if [[ -f "$mod" ]]; then
+            mod_name=$(basename "$mod")
+            chmod 755 "$mod" 2>/dev/null || true
+            ln -sf "$mod" "/usr/local/bin/$mod_name"
+            ln -sf "$mod" "/bin/$mod_name" 2>/dev/null || true
+            ln -sf "$mod" "/usr/bin/$mod_name" 2>/dev/null || true
+        fi
+    done
+fi
+
+# Main entrypoints & aliases
 ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/axiom
+ln -sf "$INSTALL_DIR/Modulos/menu" /bin/axiom 2>/dev/null || true
+ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/axiom 2>/dev/null || true
 ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/menu
+ln -sf "$INSTALL_DIR/Modulos/menu" /bin/menu 2>/dev/null || true
+ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/menu 2>/dev/null || true
 
-# 7. Record IP Address
+if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
+    chmod 755 "$INSTALL_DIR/uninstall.sh"
+    ln -sf "$INSTALL_DIR/uninstall.sh" /usr/local/bin/axiom-uninstall
+    ln -sf "$INSTALL_DIR/uninstall.sh" /bin/axiom-uninstall 2>/dev/null || true
+    ln -sf "$INSTALL_DIR/uninstall.sh" /usr/bin/axiom-uninstall 2>/dev/null || true
+fi
+
+# 7. Global PATH Profile
+cat << 'EOF' > /etc/profile.d/axiom.sh
+export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
+EOF
+chmod 644 /etc/profile.d/axiom.sh 2>/dev/null || true
+
+# 8. Version metadata files
+if [[ -f "$INSTALL_DIR/Install/versao" ]]; then
+    cp "$INSTALL_DIR/Install/versao" /etc/axiom/versao 2>/dev/null || true
+    cp "$INSTALL_DIR/Install/versao" /bin/versao 2>/dev/null || true
+    cp "$INSTALL_DIR/Install/versao" /opt/axiom/versao 2>/dev/null || true
+    cp "$INSTALL_DIR/Install/versao" /etc/VPSManager/versao 2>/dev/null || true
+fi
+
+# 9. Record IP Address
 PUBLIC_IP=$(curl -s -4 --connect-timeout 5 ifconfig.me || curl -s -4 --connect-timeout 5 icanhazip.com || echo "127.0.0.1")
 echo "$PUBLIC_IP" > /etc/IP
+
+# 10. Install Python package if Python 3 environment is present
+if command -v pip3 >/dev/null 2>&1; then
+    echo -e "${CLR_BLUE}[*] Installing Axiom Python package...${CLR_RESET}"
+    pip3 install --break-system-packages -e "$INSTALL_DIR" 2>/dev/null || pip3 install -e "$INSTALL_DIR" 2>/dev/null || true
+fi
 
 echo -e "\n${CLR_GREEN}======================================================${CLR_RESET}"
 echo -e "${CLR_GREEN}${CLR_BOLD}  ✔ Axiom VPS Manager Installed Successfully!         ${CLR_RESET}"
