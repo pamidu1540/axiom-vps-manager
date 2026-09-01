@@ -1,0 +1,12 @@
+# Axiom VPS Manager — Python Package Dependencies
+# Python 3.14+ Compatible
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+rich>=13.8.0
+python-telegram-bot>=22.8
+pydantic>=2.8.0
+pytest>=8.3.0
+pytest-asyncio>=0.24.0
+qrcode>=7.4.2
+tomli>=2.0.1; python_version < "3.11"

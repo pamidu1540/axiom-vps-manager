@@ -1,110 +1,136 @@
-## ◇────── DRAGON VPS MANAGER ───────◇
+<div align="center">
 
-ㅤ
-<p align="left">
-  <a href="" rel="noopener">
- <img width=550px height=550px src="https://github.com/januda-ui/januda-ui/blob/main/icons/photo_2021-12-01_07-36-12.jpg?raw=true?raw=true" alt="logo"></a>
+# ⚡ Axiom VPS Manager ⚡
+**Modern, Secure, High-Performance VPS Tunneling & Management Platform**
+
+[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/januda-ui/DRAGON-VPS-MANAGER/releases/tag/v1.0.0)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
+[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
+[![Ubuntu 22.04 | 24.04](https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04%20LTS-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com)
+[![Debian 12 | 13](https://img.shields.io/badge/Debian-12%20|%2013-red.svg?style=for-the-badge&logo=debian)](https://debian.org)
+
+<p align="center">
+  <a href="#-features">Features</a> •
+  <a href="#-architecture">Architecture</a> •
+  <a href="#-quick-install">Quick Install</a> •
+  <a href="#-protocols--services">Protocols</a> •
+  <a href="#-security-hardening">Security</a> •
+  <a href="#-credits">Credits</a>
 </p>
 
-##
-___REFERRAL LINK___
-
-[![DigitalOcean Referral Badge](https://web-platforms.sfo2.cdn.digitaloceanspaces.com/WWW/Badge%201.svg)](https://www.digitalocean.com/?refcode=0c8d9b763684&utm_campaign=Referral_Invite&utm_medium=Referral_Program&utm_source=badge)
-
-## ㅤ
-
-___Update System Packages and Install SCRIPT___
-
-```
-apt-get update -y; apt-get upgrade -y; wget https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/hehe; chmod 777 hehe;./hehe
-
-```
-
-## ㅤ
-
-___Tutorial___
-
-<P>
-<div class="div1">
-<span><a href="https://player.vimeo.com/video/652289751"><img src="https://user-images.githubusercontent.com/83800532/144345002-c3ec5251-f723-4a81-bcaa-ad4579562218.png" alt=""width="50"height="50"/></a></span>
-<span><a href="https://t.me/dragon_vps_manager/18"><img src="https://user-images.githubusercontent.com/83800532/143560346-101a5bbb-53c6-4d1d-90c9-364c3355a6b7.png" alt=""width="50"height="50"/></a></span>
 </div>
-</P>
-  
 
-## ㅤ
+---
 
-___Screenshots___
+## 🚀 Overview
 
-<details>
-  <summary><p><b>Click To View [Terminal] </b><div class="div0"> <span><a href=""><img src="https://user-images.githubusercontent.com/83800532/143572065-ca450924-e72b-4041-ab31-3798618973f4.png" alt=""width="30"height="30"/><span><a href=""><img src="https://user-images.githubusercontent.com/83800532/144479843-ab04c6b5-9514-4863-b714-a1b391f42b27.png" alt=""width="30"height="30"/></a></span></p></summary></div>
-<br/>
+**Axiom VPS Manager** is an enterprise-grade, completely hardened suite designed to transform any Debian or Ubuntu VPS into a multi-protocol proxy, VPN, and secure tunneling server. Built with zero-telemetry privacy principles, strict modern cryptography, asynchronous Python 3.14 core services, and native `nftables` firewalling.
 
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_ss_1.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_ss2.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_ss_3.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_ss_4.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_vps_5.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/dragon_ss_6.png" alt=""/></span></p>
-</details>
+---
 
+## ✨ Features
 
-<details>
-  <summary><p><b>Click To View [Telegram Bot]</b><div class="div0"> <span><a href=""><img src="https://user-images.githubusercontent.com/83800532/143572065-ca450924-e72b-4041-ab31-3798618973f4.png" alt=""width="30"height="30"/><span><a href=""><img src="https://user-images.githubusercontent.com/83800532/143560346-101a5bbb-53c6-4d1d-90c9-364c3355a6b7.png" alt=""width="30"height="30"/></a></span></p></summary></div>
-<br/>
+### 🛡️ Protocols & Tunneling
+- **WireGuard**: Kernel-level VPN with instant QR code client profile provisioning.
+- **Xray-core (VLESS + REALITY)**: State-of-the-art censorship circumvention mimicking authentic TLS websites.
+- **Hysteria 2**: High-throughput UDP/QUIC proxy with custom obfuscation for lossy or congested networks.
+- **sing-box**: Universal proxy core with unified routing and multi-inbound support.
+- **OpenSSH & Dropbear**: Port multiplexing, connection limit enforcement, and banner customization.
+- **WebSocket & HTTP/1.1 Upgrade**: Python 3.14 async HTTP and WebSocket proxies for CDN payload forwarding.
+- **OpenVPN**: Auto-configured PKI via Easy-RSA with secure PAM authentication.
+- **BadVPN (`badvpn-udpgw`)**: UDP forwarding daemon on port 7300 for gaming and VoIP over TCP SSH.
+- **SlowDNS**: High-performance DNS tunneling daemon over UDP 5300.
 
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/ss4.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/ss3.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/ss1.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/ss2.png" alt=""/></span></p>
-<p><span><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/Screenshot%20(41).png" alt=""/></span></p>
-</details>
+### 🔒 Security & Privacy Hardening
+- **Zero Telemetry**: No third-party logging, no hidden trackers, no phone-home mechanisms.
+- **Modern Cryptography**: Argon2id & SHA-512 password hashing; on-demand asymmetric keypair generation at installation.
+- **Native `nftables` Firewall**: Isolated named chains preventing accidental system rule flushes.
+- **Fail2ban Integration**: Automated multi-protocol brute-force mitigation.
+- **Encrypted Backups**: Local AES-256 / `age` encryption for all server configurations and user databases (no unauthenticated HTTP exposures).
+- **Audit Logging**: Comprehensive JSON-formatted audit trail located at `/var/log/axiom/audit.log`.
+- **Systemd Native**: All services run as isolated systemd units and timers with memory and CPU quota limits.
 
+### 📊 Management & TUI
+- **Rich Terminal UI**: Real-time terminal dashboard with CPU/RAM/Disk gauges, live connection tables, and service states.
+- **Async Telegram Bot**: Full reseller and admin management bot built on `python-telegram-bot v22.8` with inline buttons and interactive conversation wizards.
+- **Bandwidth Accounting**: Per-user and per-interface traffic statistics powered by `vnStat`.
+- **Internationalization (i18n)**: Multi-language support (English, Portuguese `pt-BR`, Sinhala `si`).
 
-## ㅤ
+---
 
-___Based on___
+## 📦 System Requirements
 
- <p>    
-<div class="div1">
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/icons8-linux.gif?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/icons8-internet.gif?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/ubuntu.gif?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/icons8-ssh-48.png?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/terminal2.gif?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href="https://github.com/NT-GIT-HUB/VPS-MANAGER-1.0"><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/business-3d-browser-1.png?raw=true" alt=""width="50"height="50"/></a></span>
-  <span><a href=""><img src="https://github.com/januda-ui/januda-ui/blob/main/icons/clip-internet-security.png?raw=true" alt=""width="50"height="50"/></a></span>
-</div>
- </p>
- 
- ## ㅤ
- 
-___Credits___
+| Parameter | Minimum Requirement | Recommended |
+|-----------|--------------------|-------------|
+| **Operating System** | Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Debian 12 (Bookworm) | Ubuntu 24.04 LTS / Debian 12 |
+| **Linux Kernel** | 5.15+ (WireGuard built-in) | 6.5+ |
+| **Architecture** | `x86_64` (amd64) / `aarch64` (arm64) | `x86_64` |
+| **Memory (RAM)** | 512 MB | 1 GB+ |
+| **Disk Space** | 2 GB free | 5 GB+ |
 
-<p>see on <a href="https://github.com/januda-ui/DRAGON-VPS-MANAGER/wiki/Credits" target="_blank" rel="noopener">wiki</a></p>
-<p>see on <a href="https://telegra.ph/DRAGON-VPS-MANAGER-11-30" target="_blank" rel="noopener">Telegra.ph</a>&nbsp;</p>
-  <P><b><i> 💐💐 To everyone who gave me advice and ideas.💐💐 </i></b></p>
+---
 
-## ㅤ
+## ⚡ Quick Install
 
-___Follow Us!___
+Run the secure installer as `root`:
 
- <p>    
-<div class="div2">
- <span><a href="https://t.me/s/dragon_vps_manager"><img src="https://user-images.githubusercontent.com/83800532/143560346-101a5bbb-53c6-4d1d-90c9-364c3355a6b7.png" alt=""width="50"height="50"/></a></span>
- </div>
- </p>
- 
-## ㅤ
- 
-___⚠️ Announcement ⚠️___
+```bash
+curl -fsSL https://raw.githubusercontent.com/januda-ui/DRAGON-VPS-MANAGER/main/install.sh -o install.sh && bash install.sh
+```
 
-<p><i>This script is not our own <a href="https://t.me/s/singledevelopers/">@SingleDevelopers</a> creation and we will be working on providing our own script soon.<i></p>
+### Main CLI Command
+Once installed, access the interactive dashboard anytime by running:
+```bash
+axiom
+```
+Or use the direct CLI command interface:
+```bash
+axiom --help
+axiom user create <username> --days 30 --limit 2
+axiom wireguard add-client <name> --qr
+axiom xray add-client <name> --qr
+axiom backup create --encrypt
+```
 
- 
-##  ㅤ
+---
 
-___Licence___
+## 🏗️ Architecture
 
-[![License](https://www.gnu.org/graphics/gplv3-127x51.png)](LICENSE)
+```mermaid
+graph TD
+    User([Client / User]) -->|SSH / TLS 443| Caddy[Caddy Reverse Proxy & Auto-HTTPS]
+    User -->|WireGuard UDP 51820| WG[WireGuard Kernel Module]
+    User -->|VLESS / REALITY 443| Xray[Xray-core Engine]
+    User -->|Hysteria 2 UDP 8443| Hy2[Hysteria 2 QUIC Daemon]
+    
+    Caddy -->|WebSocket Upgrade| WSProxy[Axiom Async WS Proxy :8080]
+    WSProxy -->|Forward| SSH[OpenSSH Server :22]
+    
+    subgraph Core Management
+        CLI[Axiom CLI / Rich TUI]
+        Bot[Axiom Async Telegram Bot]
+        Timer[Systemd Limiter & Expiry Timers]
+    end
 
+    subgraph Security & Monitoring
+        NFT[nftables Filter & Rate Limiter]
+        F2B[Fail2ban Jail Monitor]
+        VN[vnStat Bandwidth Collector]
+    end
+
+    CLI --> NFT & F2B & VN
+    Bot --> CLI
+    Timer --> CLI
+```
+
+---
+
+## 📜 License
+
+This project is open-source software licensed under the [MIT License](LICENSE).
+
+---
+
+## 💐 Credits
+
+See [CREDITS.md](CREDITS.md) for full attribution to all upstream contributors, maintainers, and open-source libraries.

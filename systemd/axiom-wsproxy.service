@@ -1,0 +1,17 @@
+[Unit]
+Description=Axiom WebSocket Tunnel Proxy
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /opt/axiom/Modulos/wsproxy.py 8080 127.0.0.1:22
+Restart=always
+RestartSec=3
+LimitNOFILE=65535
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=axiom-wsproxy
+
+[Install]
+WantedBy=multi-user.target

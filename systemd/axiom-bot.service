@@ -1,0 +1,17 @@
+[Unit]
+Description=Axiom Telegram Automation Bot
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=-/etc/axiom/axiom.env
+ExecStart=/usr/bin/python3 -m axiom.telegram.bot
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=axiom-bot
+
+[Install]
+WantedBy=multi-user.target

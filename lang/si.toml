@@ -1,0 +1,38 @@
+# Sinhala Translations for Axiom VPS Manager
+[menu]
+title = "⚡ Axiom VPS කළමනාකරු ⚡"
+tagline = "නවීන, ආරක්ෂිත සහ උසස් ක්‍රියාකාරීත්වයකින් යුත් VPS පද්ධතිය"
+user_management = "පරිශීලක කළමනාකරණය"
+protocols = "ප්‍රොටෝකෝල සහ උමං මාර්ග (Protocols & Tunnels)"
+firewall = "ආරක්ෂක පවුර සහ ආරක්ෂාව (Firewall & Security)"
+backup = "බැකප් සහ ප්‍රතිසාධනය (Backup & Recovery)"
+monitor = "සජීවී පද්ධති නිරීක්ෂණය"
+system_tools = "පද්ධති නඩත්තු කිරීම්"
+telegram = "ටෙලිග්‍රෑම් බොට් (Telegram Bot)"
+exit = "පිටවීම"
+
+[users]
+create_title = "නව ගිණුමක් සාදන්න"
+enter_username = "පරිශීලක නාමය ඇතුළත් කරන්න (අකුරු 3-32):"
+enter_password = "මුරපදය ඇතුළත් කරන්න (ස්වයංක්‍රීයව සෑදීමට හිස්ව තබන්න):"
+enter_days = "ගිණුමේ වලංගු කාලය දින වලින් (පෙරනිමි 30):"
+enter_limit = "එකවර සම්බන්ධතා සීමාව (පෙරනිමි 1):"
+user_created = "'{name}' ගිණුම සාර්ථකව සාදන ලදී."
+user_deleted = "'{name}' ගිණුම ඉවත් කරන ලදී."
+user_not_found = "පරිශීලකයා හමු නොවීය."
+
+[protocols]
+wireguard = "WireGuard VPN"
+xray = "Xray-core (VLESS + REALITY)"
+hysteria2 = "Hysteria 2 (QUIC Proxy)"
+singbox = "sing-box විශ්වීය වේදිකාව"
+ssh_dropbear = "SSH සහ Dropbear Multiplexer"
+caddy_tls = "Caddy Auto-HTTPS සහ WS Proxy"
+
+[system]
+status_ok = "ක්‍රියාත්මකයි"
+status_inactive = "අක්‍රියයි"
+memory = "මතකය (Memory)"
+cpu = "සකසනය (CPU)"
+disk = "තැටි ඉඩ (Disk)"
+uptime = "ක්‍රියාත්මක කාලය"

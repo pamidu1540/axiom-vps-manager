@@ -65,8 +65,7 @@ echo -e "\033[1;32mRAM MEMORY\033[0m"
 echo ""
 echo "Unable to get information"
 fi
-[[ ! -e /bin/versao ]] && rm -rf /etc/VPSManager
-echo -e "\033[1;31m• \033[1;32mSERVICES IN PERFORMANCE\033[1;31m •\033[0m"
+
 echo ""
 PT=$(lsof -V -i tcp -P -n | grep -v "ESTABLISHED" |grep -v "COMMAND" | grep "LISTEN")
 for porta in `echo -e "$PT" | cut -d: -f2 | cut -d' ' -f1 | uniq`; do

@@ -66,8 +66,6 @@ fun_atts () {
 
 	[[ -f "/home/versao" ]] && mv /home/versao /tmp/att
 
-	[[ ! -e /bin/versao ]] && rm -rf /bin/menu
-
 } > /dev/null 2>&1
 
 echo -e "ㅤ🐉ㅤDRAGON VPS MANAGERㅤ🐉ㅤ" | figlet

@@ -1,0 +1,102 @@
+# Axiom VPS Manager — Central Configuration File
+# Modern TOML format for all services, protocols, and security rules
+
+[axiom]
+version = "1.0.0"
+language = "en"                      # Supported: "en", "pt-BR", "si"
+timezone = "UTC"
+log_level = "info"                   # "debug", "info", "warning", "error"
+log_file = "/var/log/axiom/axiom.log"
+audit_log = "/var/log/axiom/audit.log"
+
+[server]
+hostname = ""                        # Auto-detected if left empty
+bind_ipv4 = "0.0.0.0"
+bind_ipv6 = "::"
+
+[ssh]
+enabled = true
+port = 22
+max_connections_per_user = 1
+password_auth = true
+permit_root_login = false            # Hardened default: disable root password login
+
+[dropbear]
+enabled = false
+port = 80
+extra_ports = [443, 8080]
+
+[wireguard]
+enabled = false
+port = 51820
+interface = "wg0"
+network_ipv4 = "10.66.66.1/24"
+network_ipv6 = "fd42:42:42::1/64"
+dns = "1.1.1.1, 1.0.0.1"
+mtu = 1420
+
+[xray]
+enabled = false
+port = 443
+protocol = "vless"                   # "vless", "vmess", "trojan"
+transport = "reality"                # "reality", "ws", "grpc", "tcp"
+reality_dest = "www.google.com:443"
+reality_server_names = ["www.google.com", "google.com"]
+
+[hysteria2]
+enabled = false
+port = 8443
+up_mbps = 100
+down_mbps = 100
+obfs_type = "salamander"
+obfs_password = ""
+
+[singbox]
+enabled = false
+dashboard_port = 9090
+unified_routing = true
+
+[openvpn]
+enabled = false
+port = 1194
+proto = "udp"
+management_port = 7505
+management_password_file = "/etc/VPSManager/.ovpn-mgmt-pw"
+
+[caddy]
+enabled = true
+http_port = 80
+https_port = 443
+admin_port = 2019
+auto_https = true                    # Automatic Let's Encrypt / ZeroSSL
+
+[proxies]
+ws_port = 8080
+http_proxy_port = 8888
+badvpn_port = 7300
+
+[telegram]
+enabled = false
+bot_token = ""                       # Set via CLI: axiom config set telegram.bot_token <token>
+admin_chat_id = ""                   # Admin Telegram user ID for notifications
+enable_trial_generator = true
+
+[backup]
+enabled = true
+directory = "/root/backups"
+encryption = true                    # Encrypt archives locally
+retention_days = 30
+auto_backup_schedule = "daily"       # "daily", "weekly", "disabled"
+
+[firewall]
+backend = "nftables"                 # "nftables" (modern standard)
+enable_fail2ban = true
+max_ssh_retries = 5
+ban_time_minutes = 60
+geoip_block = []                     # e.g. ["CN", "RU"] to block inbound
+
+[users]
+min_password_length = 8
+password_hasher = "argon2id"         # "argon2id" or "sha512"
+default_expiry_days = 30
+default_max_connections = 1

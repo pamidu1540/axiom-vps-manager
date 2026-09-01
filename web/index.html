@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Axiom VPS Manager — Web Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="brand">
+                <span class="brand-icon">⚡</span>
+                <div class="brand-text">
+                    <h2>AXIOM</h2>
+                    <span class="version-tag">v1.0.0</span>
+                </div>
+            </div>
+            <nav class="nav-menu">
+                <a href="#overview" class="nav-item active" data-tab="overview">
+                    <span class="icon">📊</span> Overview
+                </a>
+                <a href="#users" class="nav-item" data-tab="users">
+                    <span class="icon">👥</span> Users & Limits
+                </a>
+                <a href="#protocols" class="nav-item" data-tab="protocols">
+                    <span class="icon">🌐</span> Protocols & Tunnels
+                </a>
+                <a href="#security" class="nav-item" data-tab="security">
+                    <span class="icon">🛡️</span> Security & Firewall
+                </a>
+                <a href="#backup" class="nav-item" data-tab="backup">
+                    <span class="icon">💾</span> Backups
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="status-indicator online">
+                    <span class="dot"></span> System Operational
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar">
+                <div class="page-title">
+                    <h1 id="tab-heading">System Overview</h1>
+                    <p class="subtitle" id="tab-subheading">Live server telemetry and protocol activity</p>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-secondary" id="btn-refresh">🔄 Refresh</button>
+                    <button class="btn btn-primary" id="btn-new-user">+ New User</button>
+                </div>
+            </header>
+
+            <!-- TAB 1: Overview -->
+            <section id="tab-overview" class="tab-panel active">
+                <div class="metrics-grid">
+                    <div class="card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">CPU Utilization</span>
+                            <span class="metric-icon">💻</span>
+                        </div>
+                        <div class="metric-value" id="val-cpu">--%</div>
+                        <div class="progress-bar"><div class="progress-fill" id="bar-cpu" style="width: 0%"></div></div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Memory (RAM)</span>
+                            <span class="metric-icon">🧠</span>
+                        </div>
+                        <div class="metric-value" id="val-ram">-- MB</div>
+                        <div class="progress-bar"><div class="progress-fill" id="bar-ram" style="width: 0%"></div></div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Disk Storage</span>
+                            <span class="metric-icon">💽</span>
+                        </div>
+                        <div class="metric-value" id="val-disk">-- GB</div>
+                        <div class="progress-bar"><div class="progress-fill" id="bar-disk" style="width: 0%"></div></div>
+                    </div>
+                    <div class="card metric-card">
+                        <div class="metric-header">
+                            <span class="metric-title">Online Sessions</span>
+                            <span class="metric-icon">⚡</span>
+                        </div>
+                        <div class="metric-value text-accent" id="val-online">0</div>
+                        <span class="metric-subtext">Active SSH / Proxy Connections</span>
+                    </div>
+                </div>
+
+                <!-- Protocol Activity Cards -->
+                <h3 class="section-title">Active Services</h3>
+                <div class="services-grid">
+                    <div class="card service-card">
+                        <div class="service-icon">🔒</div>
+                        <div class="service-details">
+                            <h4>OpenSSH & Dropbear</h4>
+                            <p>Port 22, 80 • Active</p>
+                        </div>
+                        <span class="badge badge-success">Running</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="service-icon">⚡</div>
+                        <div class="service-details">
+                            <h4>WireGuard VPN</h4>
+                            <p>Port 51820 • UDP Kernel</p>
+                        </div>
+                        <span class="badge badge-primary">Enabled</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="service-icon">🌐</div>
+                        <div class="service-details">
+                            <h4>Xray VLESS + REALITY</h4>
+                            <p>Port 443 • Vision Flow</p>
+                        </div>
+                        <span class="badge badge-primary">Enabled</span>
+                    </div>
+                    <div class="card service-card">
+                        <div class="service-icon">🚀</div>
+                        <div class="service-details">
+                            <h4>WebSocket Tunnel</h4>
+                            <p>Port 8080 • Python 3.14 Async</p>
+                        </div>
+                        <span class="badge badge-success">Running</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 2: Users -->
+            <section id="tab-users" class="tab-panel">
+                <div class="card table-card">
+                    <div class="card-header">
+                        <h3>Managed Accounts</h3>
+                        <input type="text" class="search-input" id="user-search" placeholder="Search user...">
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="users-table">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Limit</th>
+                                    <th>Status</th>
+                                    <th>Expires On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr><td colspan="5" class="text-center">Loading accounts...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 3: Protocols -->
+            <section id="tab-protocols" class="tab-panel">
+                <div class="protocols-grid">
+                    <div class="card protocol-config-card">
+                        <h3>WireGuard Client Generator</h3>
+                        <p>Generate instant peer profiles with QR codes.</p>
+                        <div class="form-group">
+                            <label>Client Name</label>
+                            <input type="text" id="wg-client-name" placeholder="e.g. iPhone-User" class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="btn-gen-wg">Generate Client Profile</button>
+                    </div>
+
+                    <div class="card protocol-config-card">
+                        <h3>Xray VLESS Reality Share Link</h3>
+                        <p>Generate censorship-resistant VLESS Reality keys.</p>
+                        <div class="form-group">
+                            <label>Client Alias</label>
+                            <input type="text" id="xray-client-name" placeholder="e.g. Laptop-Client" class="form-control">
+                        </div>
+                        <button class="btn btn-primary" id="btn-gen-xray">Generate VLESS Key</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 4: Security -->
+            <section id="tab-security" class="tab-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Automated Security Scanner</h3>
+                        <button class="btn btn-secondary" id="btn-run-audit">Run Audit Now</button>
+                    </div>
+                    <div id="audit-results" class="audit-container">
+                        <p class="text-muted">Click "Run Audit Now" to perform a vulnerability and configuration scan.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- TAB 5: Backup -->
+            <section id="tab-backup" class="tab-panel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Local Encrypted Backups</h3>
+                        <button class="btn btn-primary" id="btn-create-backup">Create New Backup</button>
+                    </div>
+                    <p class="subtitle">All archives are encrypted with root-only permissions and stored in <code>/root/backups</code>.</p>
+                    <ul class="backup-list" id="backup-items">
+                        <li>No recent backups found.</li>
+                    </ul>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal: Create User -->
+    <div class="modal" id="modal-user">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Create Account</h3>
+                <button class="modal-close" id="btn-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" id="modal-username" class="form-control" placeholder="3-32 characters">
+                </div>
+                <div class="form-group">
+                    <label>Validity (Days)</label>
+                    <input type="number" id="modal-days" class="form-control" value="30" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Simultaneous Connection Limit</label>
+                    <input type="number" id="modal-limit" class="form-control" value="1" min="1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-modal-cancel">Cancel</button>
+                <button class="btn btn-primary" id="btn-modal-submit">Create User</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

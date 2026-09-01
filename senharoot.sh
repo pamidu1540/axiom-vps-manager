@@ -1,23 +1,32 @@
-#!/bin/bash
-clear
+#!/usr/bin/env bash
+set -euo pipefail
 
-[[ $(grep -c "prohibit-password" /etc/ssh/sshd_config) != '0' ]] && {
-	sed -i "s/prohibit-password/yes/g" /etc/ssh/sshd_config
-} > /dev/null
-[[ $(grep -c "without-password" /etc/ssh/sshd_config) != '0' ]] && {
-	sed -i "s/without-password/yes/g" /etc/ssh/sshd_config
-} > /dev/null
-[[ $(grep -c "#PermitRootLogin" /etc/ssh/sshd_config) != '0' ]] && {
-	sed -i "s/#PermitRootLogin/PermitRootLogin/g" /etc/ssh/sshd_config
-} > /dev/null
-[[ $(grep -c "PasswordAuthentication" /etc/ssh/sshd_config) = '0' ]] && {
-	echo 'PasswordAuthentication yes' > /etc/ssh/sshd_config
-} > /dev/null
-[[ $(grep -c "PasswordAuthentication no" /etc/ssh/sshd_config) != '0' ]] && {
-	sed -i "s/PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
-} > /dev/null
-[[ $(grep -c "#PasswordAuthentication no" /etc/ssh/sshd_config) != '0' ]] && {
-	sed -i "s/#PasswordAuthentication no/PasswordAuthentication yes/g" /etc/ssh/sshd_config
-} > /dev/null
-service ssh restart > /dev/null
-clear; echo -e "\033[1;32mTHEN DEFINE THE ROOT PASSWORD\033[0m"; sleep 2s; passwd && rm senharoot.sh
+[[ "$(id -u)" -ne 0 ]] && { echo "Error: Must be run as root." >&2; exit 1; }
+
+SSHD_CONFIG="/etc/ssh/sshd_config"
+
+if [[ -f "$SSHD_CONFIG" ]]; then
+    # Enable root login
+    sed -i -E 's/^#?PermitRootLogin.*/PermitRootLogin yes/' "$SSHD_CONFIG"
+    sed -i -E 's/^PermitRootLogin (prohibit-password|without-password)/PermitRootLogin yes/' "$SSHD_CONFIG"
+
+    # Enable password authentication safely without truncation
+    if grep -qE '^#?PasswordAuthentication' "$SSHD_CONFIG"; then
+        sed -i -E 's/^#?PasswordAuthentication.*/PasswordAuthentication yes/' "$SSHD_CONFIG"
+    else
+        echo "PasswordAuthentication yes" >> "$SSHD_CONFIG"
+    fi
+
+    # Restart SSH daemon
+    if systemctl is-active --quiet sshd; then
+        systemctl restart sshd
+    elif systemctl is-active --quiet ssh; then
+        systemctl restart ssh
+    else
+        service ssh restart 2>/dev/null || service sshd restart 2>/dev/null || true
+    fi
+fi
+
+echo -e "\033[1;32mSet the root password:\033[0m"
+passwd root
+rm -f "$0"

@@ -1,0 +1,10 @@
+[Unit]
+Description=Axiom Daily Backup Service
+After=network.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/axiom/Modulos/userbackup 1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=axiom-backup

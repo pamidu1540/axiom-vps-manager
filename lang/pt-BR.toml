@@ -1,0 +1,38 @@
+# Portuguese (Brazil) Translations for Axiom VPS Manager
+[menu]
+title = "⚡ Gerenciador Axiom VPS ⚡"
+tagline = "Plataforma Moderna, Segura e de Alto Desempenho"
+user_management = "Gerenciamento de Usuários"
+protocols = "Protocolos e Túneis"
+firewall = "Firewall e Segurança"
+backup = "Backup e Restauração"
+monitor = "Monitor do Sistema em Tempo Real"
+system_tools = "Ferramentas do Sistema"
+telegram = "Bot de Revenda do Telegram"
+exit = "Sair"
+
+[users]
+create_title = "Criar Nova Conta"
+enter_username = "Digite o nome de usuário (3-32 caracteres):"
+enter_password = "Digite a senha (deixe em branco para gerar):"
+enter_days = "Validade da conta em dias (padrão 30):"
+enter_limit = "Limite de conexões simultâneas (padrão 1):"
+user_created = "Conta '{name}' criada com sucesso."
+user_deleted = "Conta '{name}' removida."
+user_not_found = "Usuário não encontrado."
+
+[protocols]
+wireguard = "WireGuard VPN"
+xray = "Xray-core (VLESS + REALITY)"
+hysteria2 = "Hysteria 2 (QUIC Proxy)"
+singbox = "sing-box Plataforma Universal"
+ssh_dropbear = "SSH & Dropbear Multiplexer"
+caddy_tls = "Caddy Auto-HTTPS & WS Proxy"
+
+[system]
+status_ok = "Operacional"
+status_inactive = "Inativo"
+memory = "Memória"
+cpu = "CPU"
+disk = "Disco"
+uptime = "Tempo de Atividade"

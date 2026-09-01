@@ -1,0 +1,38 @@
+# English Translations for Axiom VPS Manager
+[menu]
+title = "⚡ Axiom VPS Manager ⚡"
+tagline = "Modern, Secure & High-Performance VPS Platform"
+user_management = "User Management"
+protocols = "Protocols & Tunnels"
+firewall = "Firewall & Security"
+backup = "Backup & Recovery"
+monitor = "Live System Monitor"
+system_tools = "System Maintenance"
+telegram = "Telegram Reseller Bot"
+exit = "Exit"
+
+[users]
+create_title = "Create New Account"
+enter_username = "Enter username (3-32 chars):"
+enter_password = "Enter password (leave empty to generate):"
+enter_days = "Account validity in days (default 30):"
+enter_limit = "Max concurrent connections (default 1):"
+user_created = "Account '{name}' created successfully."
+user_deleted = "Account '{name}' removed."
+user_not_found = "User not found."
+
+[protocols]
+wireguard = "WireGuard VPN"
+xray = "Xray-core (VLESS + REALITY)"
+hysteria2 = "Hysteria 2 (QUIC Proxy)"
+singbox = "sing-box Universal Platform"
+ssh_dropbear = "SSH & Dropbear Multiplexer"
+caddy_tls = "Caddy Auto-HTTPS & WS Proxy"
+
+[system]
+status_ok = "Operational"
+status_inactive = "Inactive"
+memory = "Memory"
+cpu = "CPU"
+disk = "Disk"
+uptime = "Uptime"

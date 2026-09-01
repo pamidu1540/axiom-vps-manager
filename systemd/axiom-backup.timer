@@ -1,0 +1,10 @@
+[Unit]
+Description=Axiom Scheduled Daily Backup Timer
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=600
+
+[Install]
+WantedBy=timers.target

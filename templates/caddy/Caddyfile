@@ -1,0 +1,24 @@
+# Axiom VPS Manager — Caddyfile Configuration
+# Automatic Let's Encrypt / ZeroSSL TLS, HTTP/2, HTTP/3, and WebSocket Proxying
+
+{
+    admin localhost:2019
+    auto_https on
+}
+
+# Replace your-domain.com with your actual server domain
+# your-domain.com {
+#     # Reverse proxy WebSocket traffic to Axiom WS Proxy on port 8080
+#     @websocket {
+#         header Connection *Upgrade*
+#         header Upgrade websocket
+#     }
+#     reverse_proxy @websocket 127.0.0.1:8080
+#
+#     # Reverse proxy REST API
+#     reverse_proxy /api/* 127.0.0.1:8000
+#
+#     # Fallback web server (serve status page or client configs)
+#     root * /var/www/html
+#     file_server
+# }
