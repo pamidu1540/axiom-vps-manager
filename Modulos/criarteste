@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
+# ==============================================================================
 # Axiom VPS Manager — Temporary Trial Account Generator
-set -euo pipefail
+# Version: 1.0.1
+# ==============================================================================
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
 if [[ ! -f "$LIB_PATH" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
     LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
 fi
 if [[ -f "$LIB_PATH" ]]; then
@@ -20,95 +22,149 @@ elif [[ "$(id -u)" -ne 0 ]]; then
     exit 1
 fi
 
-IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me || echo "127.0.0.1")
-mkdir -p /etc/VPSManager/userteste
+IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null || echo "127.0.0.1")
+mkdir -p /etc/VPSManager/userteste 2>/dev/null || true
+
+cor1='\033[1;31m'
+cor2='\033[1;32m'
+cor3='\033[1;33m'
+cor4='\033[1;36m'
+scor='\033[0m'
 
 clear
-tput setaf 7 ; tput setab 4 ; tput bold ; printf '%30s%s%-15s\n' "  Axiom - Create Trial Account  " ; tput sgr0
+echo -e "${cor4}╭─────────────────────────────────────────────────────────────╮${scor}"
+echo -e "${cor4}│${scor}        ${cor3}⚡ Axiom - Generate Temporary Trial Account ⚡${scor}        ${cor4}│${scor}"
+echo -e "${cor4}╰─────────────────────────────────────────────────────────────╯${scor}\n"
+
+# 1. Prompt Username with In-Place Validation Loop
+nome=""
+while true; do
+    read -r -p "Enter trial username (press Enter for random, '0' to cancel): " nome
+    nome=$(echo "$nome" | tr -d '[:space:]')
+
+    if [[ "$nome" == "0" || "$nome" == "q" || "$nome" == "exit" ]]; then
+        echo -e "\n${cor3}[*] Operation cancelled. Returning to menu...${scor}\n"
+        sleep 1
+        exit 0
+    fi
+
+    if [[ -z "$nome" ]]; then
+        nome="trial$((RANDOM % 8999 + 1000))"
+        echo -e "${cor2}[✓] Using generated trial username: ${cor3}$nome${scor}"
+        break
+    fi
+
+    if ! [[ "$nome" =~ ^[a-zA-Z0-9_-]{3,32}$ ]]; then
+        echo -e "${cor1}[!] Invalid username. Use 3-32 alphanumeric characters, dash, or underscore.${scor}\n"
+        continue
+    fi
+
+    if id "$nome" >/dev/null 2>&1; then
+        echo -e "${cor1}[!] User '$nome' already exists. Please choose another username or press Enter for random.${scor}\n"
+        continue
+    fi
+
+    break
+done
+
+# 2. Prompt Password
 echo ""
-
-read -r -p "Enter trial username (or press enter for random): " nome
-if [[ -z "$nome" ]]; then
-    nome="trial$((RANDOM % 8999 + 1000))"
-fi
-
-if ! [[ "$nome" =~ ^[a-zA-Z0-9_-]{3,32}$ ]]; then
-    echo -e "\n\033[1;31m[!] Invalid username. Use 3-32 alphanumeric characters, dash, or underscore.\033[0m\n"
-    exit 1
-fi
-
-if id "$nome" >/dev/null 2>&1; then
-    echo -e "\n\033[1;31m[!] User '$nome' already exists.\033[0m\n"
-    exit 1
-fi
-
-read -r -s -p "Enter password (or press enter for random): " pass
+read -r -s -p "Enter password (press Enter for auto-generated password): " pass
 echo ""
 if [[ -z "$pass" ]]; then
     pass=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 10 || echo "Ax$(date +%s%N | tail -c 8)")
+    echo -e "${cor2}[✓] Auto-generated Password: ${cor3}${pass}${scor}"
 fi
 
-read -r -p "Validity duration in minutes [default 60]: " u_temp
-u_temp="${u_temp:-60}"
-if ! [[ "$u_temp" =~ ^[0-9]+$ ]] || [[ "$u_temp" -lt 1 ]]; then
-    echo -e "\n\033[1;31m[!] Duration must be a positive integer.\033[0m\n"
-    exit 1
-fi
+# 3. Prompt Duration in Minutes
+echo ""
+u_temp=""
+while true; do
+    read -r -p "Validity duration in minutes [default: 60, '0' to cancel]: " u_temp
+    u_temp=$(echo "$u_temp" | tr -d '[:space:]')
+    [[ -z "$u_temp" ]] && u_temp="60"
+
+    if [[ "$u_temp" == "0" ]]; then
+        echo -e "\n${cor3}[*] Operation cancelled. Returning to menu...${scor}\n"
+        sleep 1
+        exit 0
+    fi
+
+    if ! [[ "$u_temp" =~ ^[0-9]+$ ]] || [[ "$u_temp" -lt 1 ]]; then
+        echo -e "${cor1}[!] Duration must be a positive integer (e.g. 60).${scor}\n"
+        continue
+    fi
+    break
+done
 
 # Ensure non-interactive shell is allowed in /etc/shells for SSH authentication
 if ! grep -q "^/bin/false" /etc/shells 2>/dev/null; then
-    echo "/bin/false" >> /etc/shells
+    echo "/bin/false" >> /etc/shells 2>/dev/null || true
 fi
 if ! grep -q "^/usr/sbin/nologin" /etc/shells 2>/dev/null; then
-    echo "/usr/sbin/nologin" >> /etc/shells
+    echo "/usr/sbin/nologin" >> /etc/shells 2>/dev/null || true
 fi
 
-# Create system user without interactive shell
-useradd -M -s /bin/false "$nome" >/dev/null 2>&1
-echo "$nome:$pass" | chpasswd
+# 4. Create System User
+err_file=$(mktemp 2>/dev/null || echo "/tmp/axiom_trial.err")
+if ! useradd -M -s /bin/false "$nome" >"$err_file" 2>&1; then
+    err_msg=$(cat "$err_file" 2>/dev/null)
+    rm -f "$err_file" 2>/dev/null || true
+    echo -e "\n${cor1}[!] Failed to create trial user account '$nome'.${scor}"
+    [[ -n "$err_msg" ]] && echo -e "${cor1}    Details: $err_msg${scor}"
+    echo ""
+    read -r -p "Press Enter to return to menu..."
+    exit 1
+fi
+rm -f "$err_file" 2>/dev/null || true
 
-# Register in main usuarios.db atomically
-touch /root/usuarios.db
-tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
-grep -v "^${nome}[[:space:]]" /root/usuarios.db > "$tmp_db" || true
+# 5. Set Password
+if ! echo "$nome:$pass" | chpasswd 2>/dev/null; then
+    echo -e "$pass\n$pass" | passwd "$nome" >/dev/null 2>&1 || true
+fi
+
+# 6. Register in main usuarios.db atomically
+touch /root/usuarios.db 2>/dev/null || true
+tmp_db=$(mktemp /root/usuarios.db.XXXXXX 2>/dev/null || mktemp 2>/dev/null || echo "/tmp/usuarios.db.tmp")
+grep -v "^${nome}[[:space:]]" /root/usuarios.db > "$tmp_db" 2>/dev/null || true
 echo "$nome 1" >> "$tmp_db"
-mv "$tmp_db" /root/usuarios.db
-chmod 644 /root/usuarios.db
+mv "$tmp_db" /root/usuarios.db 2>/dev/null || true
+chmod 644 /root/usuarios.db 2>/dev/null || true
 
-# Register in dedicated trial database
-now_epoch=$(date +%s)
+# 7. Register in trial database
+now_epoch=$(date +%s 2>/dev/null || echo 0)
 exp_epoch=$(( now_epoch + u_temp * 60 ))
-mkdir -p /etc/VPSManager
-touch /etc/VPSManager/trial_users.db
-tmp_trial=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
-grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_trial" || true
+mkdir -p /etc/VPSManager 2>/dev/null || true
+touch /etc/VPSManager/trial_users.db 2>/dev/null || true
+tmp_trial=$(mktemp /etc/VPSManager/trial_users.db.XXXXXX 2>/dev/null || mktemp 2>/dev/null || echo "/tmp/trial.tmp")
+grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "$tmp_trial" 2>/dev/null || true
 echo "$nome $exp_epoch 1" >> "$tmp_trial"
-mv "$tmp_trial" /etc/VPSManager/trial_users.db
-chmod 644 /etc/VPSManager/trial_users.db
+mv "$tmp_trial" /etc/VPSManager/trial_users.db 2>/dev/null || true
+chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
 
-# Generate dedicated cleanup script
+# 8. Generate Dedicated Cleanup Script
 cleanup_script="/etc/VPSManager/userteste/${nome}.sh"
 cat <<EOF > "$cleanup_script"
 #!/usr/bin/env bash
 pkill -u "$nome" 2>/dev/null || true
 userdel -f "$nome" 2>/dev/null || true
 if [[ -f /root/usuarios.db ]]; then
-    tmp=\$(mktemp /root/usuarios.db.XXXXXX)
-    grep -v "^${nome}[[:space:]]" /root/usuarios.db > "\$tmp" || true
-    mv "\$tmp" /root/usuarios.db
+    tmp=\$(mktemp /root/usuarios.db.XXXXXX 2>/dev/null || mktemp 2>/dev/null)
+    grep -v "^${nome}[[:space:]]" /root/usuarios.db > "\$tmp" 2>/dev/null || true
+    mv "\$tmp" /root/usuarios.db 2>/dev/null || true
     chmod 644 /root/usuarios.db 2>/dev/null || true
 fi
 if [[ -f /etc/VPSManager/trial_users.db ]]; then
-    tmp_t=\$(mktemp /etc/VPSManager/trial_users.db.XXXXXX)
-    grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "\$tmp_t" || true
-    mv "\$tmp_t" /etc/VPSManager/trial_users.db
+    tmp_t=\$(mktemp /etc/VPSManager/trial_users.db.XXXXXX 2>/dev/null || mktemp 2>/dev/null)
+    grep -v "^${nome}[[:space:]]" /etc/VPSManager/trial_users.db > "\$tmp_t" 2>/dev/null || true
+    mv "\$tmp_t" /etc/VPSManager/trial_users.db 2>/dev/null || true
     chmod 644 /etc/VPSManager/trial_users.db 2>/dev/null || true
 fi
 rm -f "$cleanup_script"
 EOF
-chmod +x "$cleanup_script"
+chmod +x "$cleanup_script" 2>/dev/null || true
 
-# Queue via at daemon with guaranteed background sleep fallback
+# Queue via at daemon with background sleep fallback
 if command -v at >/dev/null 2>&1 && systemctl is-active --quiet atd 2>/dev/null; then
     echo "$cleanup_script" | at "now + $u_temp min" >/dev/null 2>&1 || ( sleep $(( u_temp * 60 )); bash "$cleanup_script" ) >/dev/null 2>&1 &
 else
@@ -119,13 +175,17 @@ if type axiom_audit >/dev/null 2>&1; then
     axiom_audit "TRIAL_CREATE" "$nome" "duration_min=$u_temp"
 fi
 
+# 9. Summary Display
 clear
-echo -e "\033[1;36m============================================\033[0m"
-echo -e "\033[1;33m      ⚡ AXIOM TRIAL ACCOUNT CREATED ⚡     \033[0m"
-echo -e "\033[1;36m============================================\033[0m\n"
-echo -e "  \033[1;32mServer IP     :\033[0m \033[1;37m$IP\033[0m"
-echo -e "  \033[1;32mUsername      :\033[0m \033[1;37m$nome\033[0m"
-echo -e "  \033[1;32mPassword      :\033[0m \033[1;37m$pass\033[0m"
-echo -e "  \033[1;32mDuration      :\033[0m \033[1;37m$u_temp Minutes\033[0m"
-echo -e "\n\033[1;33m[!] Account will automatically expire and be removed after $u_temp minutes.\033[0m\n"
-read -r -p "Press Enter to return to menu..."
+echo -e "${cor4}╭─────────────────────────────────────────────────────────────╮${scor}"
+echo -e "${cor4}│${scor}              ${cor3}⚡ AXIOM TRIAL ACCOUNT READY ⚡${scor}                ${cor4}│${scor}"
+echo -e "${cor4}├─────────────────────────────────────────────────────────────┤${scor}"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Server IP" "$IP"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Username" "$nome"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Password" "$pass"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Duration" "$u_temp Minutes"
+echo -e "${cor4}╰─────────────────────────────────────────────────────────────╯${scor}"
+echo -e "\n${cor3}[!] Account will automatically expire and be deleted after $u_temp minutes.${scor}\n"
+
+read -r -p "⚡ Press [ENTER] to return to menu..."
+exit 0

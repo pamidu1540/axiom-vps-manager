@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# Axiom VPS Manager — Account Creation Module
-set -euo pipefail
+# ==============================================================================
+# Axiom VPS Manager — User Creation Module
+# Version: 1.0.1
+# ==============================================================================
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
 if [[ ! -f "$LIB_PATH" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
     LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
 fi
 if [[ -f "$LIB_PATH" ]]; then
@@ -20,76 +22,141 @@ elif [[ "$(id -u)" -ne 0 ]]; then
     exit 1
 fi
 
-IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me || echo "127.0.0.1")
-cor1='\033[41;1;37m'
-cor2='\033[44;1;37m'
+IP=$(cat /etc/IP 2>/dev/null || curl -s -4 --connect-timeout 5 ifconfig.me 2>/dev/null || echo "127.0.0.1")
+cor1='\033[1;31m'
+cor2='\033[1;32m'
+cor3='\033[1;33m'
+cor4='\033[1;36m'
 scor='\033[0m'
 
 clear
-echo -e "${cor2}         ⚡ Axiom - Create User Account ⚡         ${scor}\n"
+echo -e "${cor4}╭─────────────────────────────────────────────────────────────╮${scor}"
+echo -e "${cor4}│${scor}         ${cor3}⚡ Axiom - Create SSH / VPN User Account ⚡${scor}         ${cor4}│${scor}"
+echo -e "${cor4}╰─────────────────────────────────────────────────────────────╯${scor}\n"
 
-read -r -p "Enter username: " username
-[[ -z "$username" ]] && { echo -e "\n${cor1}Username cannot be empty.${scor}\n"; exit 1; }
+# 1. Prompt Username with In-Place Validation Loop
+username=""
+while true; do
+    read -r -p "Enter username (or '0' to cancel): " username
+    username=$(echo "$username" | tr -d '[:space:]')
+    
+    if [[ "$username" == "0" || "$username" == "q" || "$username" == "exit" ]]; then
+        echo -e "\n${cor3}[*] Operation cancelled. Returning to menu...${scor}\n"
+        sleep 1
+        exit 0
+    fi
+    
+    if [[ -z "$username" ]]; then
+        echo -e "${cor1}[!] Username cannot be empty. Please enter a valid name or '0' to cancel.${scor}\n"
+        continue
+    fi
+    
+    if ! [[ "$username" =~ ^[a-zA-Z0-9_-]{3,32}$ ]]; then
+        echo -e "${cor1}[!] Invalid username. Use 3-32 alphanumeric characters, dash (-), or underscore (_).${scor}\n"
+        continue
+    fi
+    
+    if id "$username" >/dev/null 2>&1; then
+        echo -e "${cor1}[!] User '$username' already exists on this system. Please choose another username.${scor}\n"
+        continue
+    fi
+    
+    break
+done
 
-if ! [[ "$username" =~ ^[a-zA-Z0-9_-]{3,32}$ ]]; then
-    echo -e "\n${cor1}Invalid username. Use 3-32 alphanumeric characters, dash, or underscore.${scor}\n"
-    exit 1
-fi
-
-if id "$username" >/dev/null 2>&1; then
-    echo -e "\n${cor1}User '$username' already exists.${scor}\n"
-    exit 1
-fi
-
-read -r -s -p "Enter password (leave empty to generate random): " password
+# 2. Prompt Password
+echo ""
+read -r -s -p "Enter password (press Enter for auto-generated secure password): " password
 echo ""
 if [[ -z "$password" ]]; then
     password=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 12 || echo "Ax$(date +%s%N | tail -c 8)")
+    echo -e "${cor2}[✓] Auto-generated Password: ${cor3}${password}${scor}"
 fi
 
-read -r -p "Validity period in days [default 30]: " dias
-dias="${dias:-30}"
-if ! [[ "$dias" =~ ^[0-9]+$ ]] || [[ "$dias" -lt 1 ]]; then
-    echo -e "\n${cor1}Days must be a positive integer.${scor}\n"
-    exit 1
-fi
+# 3. Prompt Validity in Days
+echo ""
+dias=""
+while true; do
+    read -r -p "Validity period in days [default: 30, '0' to cancel]: " dias
+    dias=$(echo "$dias" | tr -d '[:space:]')
+    [[ -z "$dias" ]] && dias="30"
+    
+    if [[ "$dias" == "0" ]]; then
+        echo -e "\n${cor3}[*] Operation cancelled. Returning to menu...${scor}\n"
+        sleep 1
+        exit 0
+    fi
+    
+    if ! [[ "$dias" =~ ^[0-9]+$ ]] || [[ "$dias" -lt 1 ]]; then
+        echo -e "${cor1}[!] Days must be a positive integer (e.g. 30).${scor}\n"
+        continue
+    fi
+    break
+done
 
-read -r -p "Connection limit [default 1]: " sshlimiter
-sshlimiter="${sshlimiter:-1}"
-if ! [[ "$sshlimiter" =~ ^[0-9]+$ ]] || [[ "$sshlimiter" -lt 1 ]] || [[ "$sshlimiter" -gt 999 ]]; then
-    echo -e "\n${cor1}Connection limit must be a positive integer (1-999).${scor}\n"
-    exit 1
-fi
+# 4. Prompt Connection Limit
+echo ""
+sshlimiter=""
+while true; do
+    read -r -p "Simultaneous connection limit [default: 1]: " sshlimiter
+    sshlimiter=$(echo "$sshlimiter" | tr -d '[:space:]')
+    [[ -z "$sshlimiter" ]] && sshlimiter="1"
+    
+    if ! [[ "$sshlimiter" =~ ^[0-9]+$ ]] || [[ "$sshlimiter" -lt 1 ]] || [[ "$sshlimiter" -gt 999 ]]; then
+        echo -e "${cor1}[!] Connection limit must be a positive integer between 1 and 999.${scor}\n"
+        continue
+    fi
+    break
+done
 
-final_date=$(date "+%Y-%m-%d" -d "+$dias days")
-display_date=$(date "+%d/%m/%Y" -d "+$dias days")
+# Calculate expiration date safely
+final_date=$(date "+%Y-%m-%d" -d "+$dias days" 2>/dev/null || date -d "+$dias days" "+%Y-%m-%d" 2>/dev/null || echo "")
+display_date=$(date "+%d/%m/%Y" -d "+$dias days" 2>/dev/null || echo "$final_date")
 
-# Ensure non-interactive shell is allowed in /etc/shells for SSH authentication
+# Ensure non-interactive shells are registered in /etc/shells for SSH PAM
 if ! grep -q "^/bin/false" /etc/shells 2>/dev/null; then
-    echo "/bin/false" >> /etc/shells
+    echo "/bin/false" >> /etc/shells 2>/dev/null || true
 fi
 if ! grep -q "^/usr/sbin/nologin" /etc/shells 2>/dev/null; then
-    echo "/usr/sbin/nologin" >> /etc/shells
+    echo "/usr/sbin/nologin" >> /etc/shells 2>/dev/null || true
 fi
 
-# Create user securely with false shell and expiration date
-useradd -e "$final_date" -M -s /bin/false "$username" >/dev/null 2>&1
-echo "$username:$password" | chpasswd
+# 5. Create System User
+err_file=$(mktemp 2>/dev/null || echo "/tmp/axiom_useradd.err")
+useradd_args=(-M -s /bin/false)
+[[ -n "$final_date" ]] && useradd_args+=(-e "$final_date")
 
-# Update database atomically on the same filesystem
-touch /root/usuarios.db
-tmp_db=$(mktemp /root/usuarios.db.XXXXXX)
-grep -v "^${username}[[:space:]]" /root/usuarios.db > "$tmp_db" || true
+if ! useradd "${useradd_args[@]}" "$username" >"$err_file" 2>&1; then
+    err_msg=$(cat "$err_file" 2>/dev/null)
+    rm -f "$err_file" 2>/dev/null || true
+    echo -e "\n${cor1}[!] Failed to create user account '$username'.${scor}"
+    [[ -n "$err_msg" ]] && echo -e "${cor1}    Details: $err_msg${scor}"
+    echo ""
+    read -r -p "Press Enter to return to menu..."
+    exit 1
+fi
+rm -f "$err_file" 2>/dev/null || true
+
+# 6. Set Password via chpasswd
+if ! echo "$username:$password" | chpasswd 2>/dev/null; then
+    echo -e "\n${cor1}[!] Warning: Failed to set password using chpasswd. Trying passwd...${scor}"
+    echo -e "$password\n$password" | passwd "$username" >/dev/null 2>&1 || true
+fi
+
+# 7. Update User Database Atomically
+touch /root/usuarios.db 2>/dev/null || true
+tmp_db=$(mktemp /root/usuarios.db.XXXXXX 2>/dev/null || mktemp 2>/dev/null || echo "/tmp/usuarios.db.tmp")
+grep -v "^${username}[[:space:]]" /root/usuarios.db > "$tmp_db" 2>/dev/null || true
 echo "$username $sshlimiter" >> "$tmp_db"
-mv "$tmp_db" /root/usuarios.db
-chmod 644 /root/usuarios.db
+mv "$tmp_db" /root/usuarios.db 2>/dev/null || true
+chmod 644 /root/usuarios.db 2>/dev/null || true
 
-# OpenVPN client profile generation (if OpenVPN is configured)
+# 8. OpenVPN Client Profile Generation (if OpenVPN is active)
 if [[ -d /etc/openvpn/easy-rsa && -f /etc/openvpn/client-common.txt ]]; then
     (
-        cd /etc/openvpn/easy-rsa/
+        cd /etc/openvpn/easy-rsa/ 2>/dev/null || exit 0
         ./easyrsa build-client-full "$username" nopass >/dev/null 2>&1 || true
-        cp /etc/openvpn/client-common.txt "/root/${username}.ovpn"
+        cp /etc/openvpn/client-common.txt "/root/${username}.ovpn" 2>/dev/null || true
         echo "<ca>" >> "/root/${username}.ovpn"
         cat pki/ca.crt >> "/root/${username}.ovpn" 2>/dev/null || true
         echo "</ca>" >> "/root/${username}.ovpn"
@@ -99,26 +166,30 @@ if [[ -d /etc/openvpn/easy-rsa && -f /etc/openvpn/client-common.txt ]]; then
         echo "<key>" >> "/root/${username}.ovpn"
         cat "pki/private/${username}.key" >> "/root/${username}.ovpn" 2>/dev/null || true
         echo "</key>" >> "/root/${username}.ovpn"
-        chmod 600 "/root/${username}.ovpn"
-    ) || true
+        chmod 600 "/root/${username}.ovpn" 2>/dev/null || true
+    ) 2>/dev/null || true
 fi
 
 if type axiom_audit >/dev/null 2>&1; then
     axiom_audit "USER_CREATE" "$username" "days=$dias,limit=$sshlimiter"
 fi
 
+# 9. Display Credential Summary Table
 clear
-echo -e "\033[1;36m============================================\033[0m"
-echo -e "\033[1;33m       ⚡ AXIOM ACCOUNT PROVISIONED ⚡      \033[0m"
-echo -e "\033[1;36m============================================\033[0m\n"
-echo -e "  \033[1;32mServer IP     :\033[0m \033[1;37m$IP\033[0m"
-echo -e "  \033[1;32mUsername      :\033[0m \033[1;37m$username\033[0m"
-echo -e "  \033[1;32mPassword      :\033[0m \033[1;37m$password\033[0m"
-echo -e "  \033[1;32mConn Limit    :\033[0m \033[1;37m$sshlimiter\033[0m"
-echo -e "  \033[1;32mExpires On    :\033[0m \033[1;37m$display_date ($dias Days)\033[0m"
-echo -e "\n\033[1;36m============================================\033[0m"
+echo -e "${cor4}╭─────────────────────────────────────────────────────────────╮${scor}"
+echo -e "${cor4}│${scor}              ${cor3}⚡ AXIOM ACCOUNT PROVISIONED ⚡${scor}                ${cor4}│${scor}"
+echo -e "${cor4}├─────────────────────────────────────────────────────────────┤${scor}"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Server IP" "$IP"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Username" "$username"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Password" "$password"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Conn Limit" "$sshlimiter simultaneous session(s)"
+printf "${cor4}│${scor}  ${cor2}%-16s${scor}: ${cor3}%-41s${scor}${cor4}│${scor}\n" "Expires On" "$display_date ($dias Days)"
+echo -e "${cor4}╰─────────────────────────────────────────────────────────────╯${scor}"
+
 if [[ -f "/root/${username}.ovpn" ]]; then
-    echo -e "\033[1;33m[✓] OpenVPN Profile saved to: /root/${username}.ovpn (chmod 600)\033[0m"
+    echo -e "\n${cor3}[✓] OpenVPN Profile saved to: /root/${username}.ovpn (chmod 600)${scor}"
 fi
+
 echo ""
-read -r -p "Press Enter to return to menu..."
+read -r -p "⚡ Press [ENTER] to return to menu..."
+exit 0

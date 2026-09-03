@@ -276,6 +276,7 @@ fi
 # 10. Global PATH Profile
 cat << 'EOF' > /etc/profile.d/axiom.sh
 export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PYTHONPATH="/opt/axiom/src:${PYTHONPATH:-}"
 EOF
 chmod 644 /etc/profile.d/axiom.sh 2>/dev/null || true
 

@@ -3,9 +3,8 @@
 # Axiom VPS Manager — Advanced Operations Menu Direct Entrypoint
 # ==============================================================================
 
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+REAL_SOURCE="$(readlink -f "${BASH_SOURCE[0]:-$0}" 2>/dev/null || realpath "${BASH_SOURCE[0]:-$0}" 2>/dev/null || echo "${BASH_SOURCE[0]:-$0}")"
+SCRIPT_DIR="$(cd "$(dirname "$REAL_SOURCE")" 2>/dev/null && pwd || echo "")"
 MENU_SCRIPT="$SCRIPT_DIR/menu"
 
 if [[ ! -f "$MENU_SCRIPT" ]]; then
@@ -13,12 +12,7 @@ if [[ ! -f "$MENU_SCRIPT" ]]; then
 fi
 
 if [[ -f "$MENU_SCRIPT" ]]; then
-    # Source the menu and invoke menu2
-    # shellcheck source=Modulos/menu
-    (
-        source "$MENU_SCRIPT"
-        menu2
-    )
+    exec bash "$MENU_SCRIPT" menu2 "$@"
 else
     echo "Error: Axiom menu script not found." >&2
     exit 1
