@@ -3,6 +3,9 @@ Axiom VPS Manager — Main Command-Line Interface Dispatcher
 """
 
 import argparse
+import os
+import subprocess
+import sys
 
 from axiom.firewall.nft_manager import NFTablesManager
 from axiom.monitor.bandwidth import BandwidthMonitor
@@ -82,6 +85,15 @@ def main():
     args = parser.parse_args()
 
     if not args.command or args.command == "menu":
+        menu_sh = "/opt/axiom/Modulos/menu"
+        if not os.path.exists(menu_sh):
+            candidate = os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Modulos", "menu"
+            )
+            if os.path.exists(candidate):
+                menu_sh = candidate
+        if os.path.exists(menu_sh) and sys.platform != "win32":
+            os.execv("/bin/bash", ["bash", menu_sh])
         dashboard = Dashboard()
         dashboard.render()
         return
@@ -89,8 +101,6 @@ def main():
     user_mgr = UserManager()
 
     if args.command == "bot":
-        import os
-
         from axiom.config import load_config
         from axiom.telegram.bot import AxiomTelegramBot
 
@@ -122,6 +132,9 @@ def main():
         bot.run()
 
     if args.command == "user":
+        if not getattr(args, "user_action", None):
+            user_parser.print_help()
+            return
         if args.user_action == "create":
             res = user_mgr.create_user(args.username, args.password, args.days, args.limit)
             print(f"✅ User '{res['username']}' created successfully.")
@@ -140,6 +153,9 @@ def main():
                 print(f" - {u['username']} (Limit: {u['limit']})")
 
     elif args.command == "firewall":
+        if not getattr(args, "fw_action", None):
+            fw_parser.print_help()
+            return
         if args.fw_action == "apply":
             nft = NFTablesManager()
             if nft.apply_base_firewall():
@@ -159,6 +175,9 @@ def main():
             print(" ✔ No security vulnerabilities detected.")
 
     elif args.command == "backup":
+        if not getattr(args, "backup_action", None):
+            backup_parser.print_help()
+            return
         engine = BackupEngine()
         if args.backup_action == "create":
             path = engine.create_backup()
@@ -173,6 +192,9 @@ def main():
                 print(f" - {b}")
 
     elif args.command == "wireguard":
+        if not getattr(args, "wg_action", None):
+            wg_parser.print_help()
+            return
         if args.wg_action == "add-client":
             wg = WireGuardService()
             res = wg.add_client(args.name)
@@ -182,6 +204,9 @@ def main():
             print(QRCodeGenerator.generate_terminal_qr(res["config"]))
 
     elif args.command == "xray":
+        if not getattr(args, "xray_action", None):
+            xray_parser.print_help()
+            return
         if args.xray_action == "add-client":
             xray = XrayService()
             uri = xray.generate_client_uri(
@@ -198,9 +223,6 @@ def main():
         print(f"   Total    : {stats['total_gb']} GB")
 
     elif args.command == "uninstall":
-        import os
-        import subprocess
-
         uninstall_script = "/opt/axiom/uninstall.sh"
         if not os.path.exists(uninstall_script):
             uninstall_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uninstall.sh")

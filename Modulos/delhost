@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
+# ==============================================================================
+# Axiom VPS Manager — Remove Whitelisted Domain from Squid Proxy
+# ==============================================================================
+
 set -euo pipefail
 
 payload=""
-if [[ -d "/etc/squid/" ]]; then
+if [[ -d "/etc/squid" ]]; then
     payload="/etc/squid/payload.txt"
-elif [[ -d "/etc/squid3/" ]]; then
+elif [[ -d "/etc/squid3" ]]; then
     payload="/etc/squid3/payload.txt"
 fi
 
-tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "Remove Host from Squid Proxy" ; tput sgr0
+tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Remove Host from Squid Proxy  " ; tput sgr0
 
 if [[ -z "$payload" || ! -f "$payload" ]]; then
-    echo -e "\n\033[1;31m[!] Payload file not found in /etc/squid/ or /etc/squid3/\033[0m\n"
-    exit 1
+    echo -e "\n\033[1;31m[!] Squid is not installed or payload.txt does not exist.\033[0m\n"
+    read -r -p "Press Enter to return..."
+    exit 0
 fi
 
 echo -e "\n\033[1;32mCurrent domains in $payload:\033[0m"
@@ -22,11 +27,13 @@ echo ""
 read -r -p "Enter the domain to remove: " host
 if [[ -z "$host" ]]; then
     echo -e "\n\033[1;31m[!] Empty domain provided.\033[0m\n"
-    exit 1
+    read -r -p "Press Enter to return..."
+    exit 0
 fi
 
 if ! grep -Fxq "$host" "$payload"; then
-    echo -e "\n\033[1;33m[!] Domain $host not found in $payload\033[0m\n"
+    echo -e "\n\033[1;33m[!] Domain '$host' not found in $payload\033[0m\n"
+    read -r -p "Press Enter to return..."
     exit 0
 fi
 
@@ -37,7 +44,7 @@ chown --reference="$payload" "$tmp_file" 2>/dev/null || true
 mv "$tmp_file" "$payload"
 chmod 644 "$payload" 2>/dev/null || true
 
-# Corrected service reload check
+# Service reload
 if systemctl is-active --quiet squid 2>/dev/null; then
     systemctl reload squid
 elif systemctl is-active --quiet squid3 2>/dev/null; then
@@ -48,4 +55,5 @@ elif [[ -f "/etc/init.d/squid3" ]]; then
     service squid3 reload
 fi
 
-echo -e "\n\033[1;32m[✓] Domain $host removed and proxy reloaded.\033[0m\n"
+echo -e "\n\033[1;32m[✓] Domain '$host' removed and proxy reloaded.\033[0m\n"
+read -r -p "⚡ Press [ENTER] to return..."

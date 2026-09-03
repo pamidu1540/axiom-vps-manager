@@ -64,6 +64,14 @@ fi
 final_date=$(date "+%Y-%m-%d" -d "+$dias days")
 display_date=$(date "+%d/%m/%Y" -d "+$dias days")
 
+# Ensure non-interactive shell is allowed in /etc/shells for SSH authentication
+if ! grep -q "^/bin/false" /etc/shells 2>/dev/null; then
+    echo "/bin/false" >> /etc/shells
+fi
+if ! grep -q "^/usr/sbin/nologin" /etc/shells 2>/dev/null; then
+    echo "/usr/sbin/nologin" >> /etc/shells
+fi
+
 # Create user securely with false shell and expiration date
 useradd -e "$final_date" -M -s /bin/false "$username" >/dev/null 2>&1
 echo "$username:$password" | chpasswd

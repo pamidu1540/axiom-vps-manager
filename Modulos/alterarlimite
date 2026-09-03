@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
+# ==============================================================================
 # Axiom VPS Manager — Change Connection Limit Module
+# ==============================================================================
+
 set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
 if [[ ! -f "$LIB_PATH" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
     LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
 fi
 if [[ -f "$LIB_PATH" ]]; then
@@ -29,7 +32,12 @@ echo ""
 
 mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
 if [[ ${#users_list[@]} -eq 0 ]]; then
-    echo -e "\033[1;31mNo managed users found.\033[0m\n"
+    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd | sort -u)
+fi
+
+if [[ ${#users_list[@]} -eq 0 ]]; then
+    echo -e "\033[1;31mNo users found.\033[0m\n"
+    read -r -p "⚡ Press [ENTER] to return..."
     exit 0
 fi
 
@@ -47,19 +55,21 @@ read -r -p "Enter user number or username: " sel
 target_user=""
 if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
     target_user="${users_list[$((sel - 1))]}"
-elif grep -qw "$sel" "$database"; then
+elif id "$sel" >/dev/null 2>&1; then
     target_user="$sel"
 fi
 
 if [[ -z "$target_user" ]] || ! id "$target_user" >/dev/null 2>&1; then
     echo -e "\n\033[1;31m[!] User not found or invalid selection.\033[0m\n"
-    exit 1
+    read -r -p "⚡ Press [ENTER] to return..."
+    exit 0
 fi
 
 read -r -p "Enter new connection limit for $target_user [1-999]: " new_limit
 if ! [[ "$new_limit" =~ ^[0-9]+$ ]] || [[ "$new_limit" -lt 1 ]] || [[ "$new_limit" -gt 999 ]]; then
     echo -e "\n\033[1;31m[!] Connection limit must be an integer between 1 and 999.\033[0m\n"
-    exit 1
+    read -r -p "⚡ Press [ENTER] to return..."
+    exit 0
 fi
 
 # Atomic update on same filesystem
@@ -85,4 +95,4 @@ if type axiom_audit >/dev/null 2>&1; then
 fi
 
 echo -e "\n\033[1;32m[✓] Limit for '$target_user' successfully updated to $new_limit connection(s).\033[0m\n"
-read -r -p "Press Enter to return to menu..."
+read -r -p "⚡ Press [ENTER] to return to menu..."

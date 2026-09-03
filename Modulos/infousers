@@ -40,12 +40,15 @@ while read -r user_line; do
 
     total_users=$((total_users + 1))
 
-    # Connection counting across OpenSSH, Dropbear, and OpenVPN
-    u_ssh=$(pgrep -u "$users" sshd 2>/dev/null | wc -l || echo "0")
-    u_drop=$(pgrep -u "$users" dropbear 2>/dev/null | wc -l || echo "0")
+    # Connection counting safely across OpenSSH, Dropbear, and OpenVPN
+    u_ssh=$(pgrep -c -u "$users" sshd 2>/dev/null || true)
+    [[ -z "$u_ssh" ]] && u_ssh=0
+    u_drop=$(pgrep -c -u "$users" dropbear 2>/dev/null || true)
+    [[ -z "$u_drop" ]] && u_drop=0
     u_ovp=0
     if [[ -f /etc/openvpn/openvpn-status.log ]]; then
-        u_ovp=$(grep -E ",${users}," /etc/openvpn/openvpn-status.log 2>/dev/null | wc -l || echo "0")
+        u_ovp=$(grep -E -c ",${users}," /etc/openvpn/openvpn-status.log 2>/dev/null || true)
+        [[ -z "$u_ovp" ]] && u_ovp=0
     fi
     u_total=$((u_ssh + u_drop + u_ovp))
     total_active_sessions=$((total_active_sessions + u_total))

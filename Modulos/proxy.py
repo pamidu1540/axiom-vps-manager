@@ -15,8 +15,10 @@ logger = logging.getLogger("AxiomProxy")
 
 BUFLEN = 65536
 TIMEOUT = 60
+MSG = "Welcome to Axiom"
 DEFAULT_HOST = "127.0.0.1:22"
-RESPONSE = b"HTTP/1.1 200 Connection Established\r\n\r\n"
+DEFAULT_TARGET = DEFAULT_HOST
+RESPONSE = f"HTTP/1.1 200 Connection Established\r\n\r\n<!-- <font color=\"cyan\">{MSG}</font> -->\r\n\r\n".encode()
 
 
 class ConnectionHandler(threading.Thread):

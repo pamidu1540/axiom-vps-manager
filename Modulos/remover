@@ -60,7 +60,12 @@ if [[ "$resp" == "1" ]]; then
     
     mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
     if [[ ${#users_list[@]} -eq 0 ]]; then
-        echo -e "\033[1;31mNo managed users found in database.\033[0m"
+        mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd | sort -u)
+    fi
+
+    if [[ ${#users_list[@]} -eq 0 ]]; then
+        echo -e "\033[1;31mNo users found to remove.\033[0m\n"
+        read -r -p "⚡ Press [ENTER] to return..."
         exit 0
     fi
 
@@ -74,7 +79,7 @@ if [[ "$resp" == "1" ]]; then
     target_user=""
     if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
         target_user="${users_list[$((sel - 1))]}"
-    elif grep -qw "$sel" "$database"; then
+    elif id "$sel" >/dev/null 2>&1; then
         target_user="$sel"
     fi
 

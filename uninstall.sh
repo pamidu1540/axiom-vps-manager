@@ -122,7 +122,7 @@ ALL_BINS=(
     "banner" "senharoot" "reiniciarservicos" "reiniciarsistema" "attscript"
     "conexao" "delscript" "detalhes" "botssh" "botteste" "botgen" "infousers"
     "verifatt" "limiter" "uexpired" "cabecalho" "bot" "botsshteste" "botgerador"
-    "slow_dns" "slowdns" "versao" "dns" "dns-server" "onlineapp.sh" "open.py" "proxy.py" "wsproxy.py"
+    "slow_dns" "slowdns" "versao" "dns" "dns-server" "onlineapp.sh" "open.py" "proxy.py" "wsproxy.py" "autoexec" "menu2"
 )
 
 for bin in "${ALL_BINS[@]}"; do

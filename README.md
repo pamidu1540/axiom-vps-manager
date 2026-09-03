@@ -3,11 +3,15 @@
 # ⚡ Axiom VPS Manager ⚡
 **Modern, Secure, High-Performance VPS Tunneling & Management Platform**
 
-[![Version](https://img.shields.io/badge/version-v1.0.0-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.0)
+[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.1)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=for-the-badge)](LICENSE)
-[![Python 3.14+](https://img.shields.io/badge/Python-3.14%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
+[![Bash](https://img.shields.io/badge/Bash-5.0%2B-black.svg?style=for-the-badge&logo=gnu-bash)](https://gnu.org/software/bash)
+[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
 [![Ubuntu 22.04 | 24.04](https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04%20LTS-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com)
 [![Debian 12 | 13](https://img.shields.io/badge/Debian-12%20|%2013-red.svg?style=for-the-badge&logo=debian)](https://debian.org)
+[![WireGuard](https://img.shields.io/badge/WireGuard-VPN-88171a.svg?style=for-the-badge&logo=wireguard)](https://wireguard.com)
+[![OpenVPN](https://img.shields.io/badge/OpenVPN-TLS-ea7125.svg?style=for-the-badge&logo=openvpn)](https://openvpn.net)
+[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-2ca5e0.svg?style=for-the-badge&logo=telegram)](https://telegram.org)
 
 <p align="center">
   <a href="#-features">Features</a> •
@@ -134,3 +138,9 @@ This project is open-source software licensed under the [GNU General Public Lice
 ## 💐 Credits
 
 See [CREDITS.md](CREDITS.md) for full attribution to all upstream contributors, maintainers, and open-source libraries.
+
+---
+
+## 🏷️ Topics & Tags
+
+`vps-manager` • `vpn-server` • `ssh-tunnel` • `openvpn` • `badvpn` • `slowdns` • `dropbear` • `squid-proxy` • `websocket-proxy` • `telegram-bot` • `linux-vps` • `wireguard` • `xray` • `hysteria2` • `proxy-server` • `networking-tools` • `debian` • `ubuntu` • `axiom`

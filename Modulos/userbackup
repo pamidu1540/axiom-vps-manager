@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
+# ==============================================================================
 # Axiom VPS Manager — Secure Backup & Recovery
+# ==============================================================================
+
 set -euo pipefail
 
 BACKUP_DIR="/root/backups"
@@ -10,12 +13,12 @@ opt="${1:-}"
 if [[ -z "$opt" ]]; then
     if [[ -t 0 ]]; then
         clear
-        echo -e "\033[1;36m======================================\033[0m"
-        echo -e "\033[1;33m       Axiom Secure Backup Manager    \033[0m"
-        echo -e "\033[1;36m======================================\033[0m"
+        echo -e "\033[1;36m====================================================\033[0m"
+        echo -e "\033[1;33m       ⚡ Axiom VPS Manager — Secure Backup ⚡       \033[0m"
+        echo -e "\033[1;36m====================================================\033[0m"
         echo ""
-        echo -e "\033[1;32m[1]\033[0m Create Encrypted Backup"
-        echo -e "\033[1;32m[2]\033[0m Restore from Backup"
+        echo -e "\033[1;32m[1]\033[0m Create System & User Archive Backup"
+        echo -e "\033[1;32m[2]\033[0m Restore System from Backup Archive"
         echo -e "\033[1;32m[3]\033[0m List Existing Backups"
         echo -e "\033[1;31m[0]\033[0m Return to Menu"
         echo ""
@@ -49,17 +52,35 @@ case "$opt" in
         echo -e "\033[1;33m[!] Note: Backups are stored locally with root-only permissions (chmod 600).\033[0m"
         echo -e "\033[1;33m    Download securely via SFTP / SCP (e.g. scp root@<server_ip>:$BACKUP_FILE .)\033[0m\n"
         if [[ -t 0 && -z "${1:-}" ]]; then
-            read -r -p "Press Enter to continue..."
+            read -r -p "⚡ Press [ENTER] to return to menu..."
         fi
         ;;
     2)
         RESTORE_FILE="${2:-}"
         if [[ -z "$RESTORE_FILE" ]]; then
+            mapfile -t b_list < <(find "$BACKUP_DIR" -maxdepth 1 -name "*.tar.gz" | sort -r)
+            if [[ ${#b_list[@]} -eq 0 ]]; then
+                echo -e "\n\033[1;31m[!] No backups found in $BACKUP_DIR\033[0m\n"
+                read -r -p "⚡ Press [ENTER] to return..."
+                exit 0
+            fi
+
             echo -e "\n\033[1;33mAvailable backups:\033[0m"
-            ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || { echo "No backups found."; exit 0; }
+            for i in "${!b_list[@]}"; do
+                idx=$((i + 1))
+                b_name=$(basename "${b_list[$i]}")
+                b_sz=$(du -h "${b_list[$i]}" | cut -f1)
+                echo -e "[\033[1;32m$idx\033[0m] $b_name (\033[1;36m$b_sz\033[0m)"
+            done
             echo ""
-            if [[ -t 0 ]]; then
-                read -r -p "Enter full path to backup file to restore: " RESTORE_FILE
+            read -r -p "Enter backup number or path: " b_sel
+
+            if [[ "$b_sel" =~ ^[0-9]+$ ]] && (( b_sel >= 1 && b_sel <= ${#b_list[@]} )); then
+                RESTORE_FILE="${b_list[$((b_sel - 1))]}"
+            elif [[ -f "$b_sel" ]]; then
+                RESTORE_FILE="$b_sel"
+            elif [[ -f "$BACKUP_DIR/$b_sel" ]]; then
+                RESTORE_FILE="$BACKUP_DIR/$b_sel"
             fi
         fi
 
@@ -71,20 +92,30 @@ case "$opt" in
             [[ -d "$TMP_RESTORE/wireguard" ]] && cp -r "$TMP_RESTORE/wireguard" /etc/
             [[ -d "$TMP_RESTORE/axiom" ]] && cp -r "$TMP_RESTORE/axiom" /etc/
             rm -rf "$TMP_RESTORE"
-            echo -e "\033[1;32m[✓] Restore completed successfully.\033[0m\n"
+            echo -e "\n\033[1;32m[✓] Restore completed successfully from $(basename "$RESTORE_FILE").\033[0m\n"
         else
-            echo -e "\033[1;31m[!] File not found: ${RESTORE_FILE:-none}\033[0m\n"
+            echo -e "\n\033[1;31m[!] Invalid backup selection or file not found.\033[0m\n"
         fi
         if [[ -t 0 && -z "${1:-}" ]]; then
-            read -r -p "Press Enter to continue..."
+            read -r -p "⚡ Press [ENTER] to return..."
         fi
         ;;
     3)
-        echo -e "\n\033[1;33mExisting backups in $BACKUP_DIR:\033[0m"
-        ls -lh "$BACKUP_DIR"/*.tar.gz 2>/dev/null || echo "No backups found."
-        echo ""
+        mapfile -t b_list < <(find "$BACKUP_DIR" -maxdepth 1 -name "*.tar.gz" | sort -r)
+        if [[ ${#b_list[@]} -eq 0 ]]; then
+            echo -e "\n\033[1;33mNo backups found in $BACKUP_DIR.\033[0m\n"
+        else
+            echo -e "\n\033[1;33mExisting backups in $BACKUP_DIR:\033[0m"
+            for i in "${!b_list[@]}"; do
+                idx=$((i + 1))
+                b_name=$(basename "${b_list[$i]}")
+                b_sz=$(du -h "${b_list[$i]}" | cut -f1)
+                echo -e "[\033[1;32m$idx\033[0m] $b_name (\033[1;36m$b_sz\033[0m)"
+            done
+            echo ""
+        fi
         if [[ -t 0 && -z "${1:-}" ]]; then
-            read -r -p "Press Enter to continue..."
+            read -r -p "⚡ Press [ENTER] to return..."
         fi
         ;;
     *)

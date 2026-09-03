@@ -1,6 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
 RED='\033[1;31m'
 GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
@@ -83,6 +94,14 @@ initslow() {
         echo -e "\n${GREEN}[✓] SlowDNS Service Started on UDP :5300!${SCOLOR}"
         echo -e "${YELLOW}Server Public Key:${SCOLOR} ${pub_key}"
         echo -e "${YELLOW}Client Command:${SCOLOR} slowdns ${ns} ${pub_key}\n"
+
+        if type axiom_firewall_allow_port >/dev/null 2>&1; then
+            axiom_firewall_allow_port 5300 "udp" "SlowDNS Tunnel"
+            axiom_firewall_allow_port 53 "udp" "DNS Ingress"
+        fi
+        if type axiom_firewall_advisory >/dev/null 2>&1; then
+            axiom_firewall_advisory 5300 "UDP" "SlowDNS Server"
+        fi
     fi
 }
 

@@ -30,29 +30,33 @@ BG_BLUE='\033[44;1;37m'
 BG_CYAN='\033[46;1;30m'
 
 fun_bar() {
-    comando[0]="$1"
-    comando[1]="$2"
+    local cmd1="${1:-}"
+    local cmd2="${2:-}"
+    local pid
     (
-        [[ -e $HOME/fim ]] && rm $HOME/fim
-        ${comando[0]} -y > /dev/null 2>&1
-        ${comando[1]} -y > /dev/null 2>&1
-        touch $HOME/fim
-    ) > /dev/null 2>&1 &
+        eval "$cmd1" >/dev/null 2>&1
+        [[ -n "$cmd2" ]] && eval "$cmd2" >/dev/null 2>&1
+    ) &
+    pid=$!
+
+    local spin=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local i=0
+    local timeout=60
+    local elapsed=0
+
     tput civis 2>/dev/null || true
-    echo -ne "  ${CLR_YELLOW}Processing... [${CLR_RESET}"
-    while true; do
-        for ((i=0; i<18; i++)); do
-            echo -ne "${CLR_CYAN}#"
-            sleep 0.08s
-        done
-        [[ -e $HOME/fim ]] && rm $HOME/fim && break
-        echo -e "${CLR_YELLOW}]${CLR_RESET}"
-        sleep 0.8s
-        tput cuu1 2>/dev/null || true
-        tput dl1 2>/dev/null || true
-        echo -ne "  ${CLR_YELLOW}Processing... [${CLR_RESET}"
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  ${CLR_YELLOW}Processing... [${CLR_CYAN}%s${CLR_YELLOW}]${CLR_RESET} " "${spin[i % 10]}"
+        ((i++))
+        sleep 0.1
+        ((elapsed += 1))
+        if (( elapsed > timeout * 10 )); then
+            kill -9 "$pid" 2>/dev/null || true
+            break
+        fi
     done
-    echo -e "${CLR_YELLOW}] - ${CLR_GREEN}DONE!${CLR_RESET}"
+    wait "$pid" 2>/dev/null || true
+    printf "\r  ${CLR_YELLOW}Processing... [${CLR_GREEN}✔${CLR_YELLOW}] - ${CLR_GREEN}DONE!${CLR_RESET}\n"
     tput cnorm 2>/dev/null || true
 }
 
@@ -139,7 +143,7 @@ menu2() {
         system=$(cat /etc/issue.net 2>/dev/null || uname -s)
     fi
 
-    _ons=$(ps -x 2>/dev/null | grep sshd | grep -v root | grep priv | wc -l || echo 0)
+    _ons=$(ps x 2>/dev/null | grep sshd | grep -v root | grep -c priv || echo "0")
     _expuser=$(cat /etc/VPSManager/Exp 2>/dev/null || echo "0")
     [[ -z "$_expuser" ]] && _expuser="0"
     _onop=$(grep -c "10.8.0" /etc/openvpn/openvpn-status.log 2>/dev/null || echo 0)
@@ -210,7 +214,7 @@ menu_principal() {
             system=$(cat /etc/issue.net 2>/dev/null || uname -s)
         fi
 
-        _ons=$(ps -x 2>/dev/null | grep sshd | grep -v root | grep priv | wc -l || echo 0)
+        _ons=$(ps x 2>/dev/null | grep sshd | grep -v root | grep -c priv || echo "0")
         _expuser=$(cat /etc/VPSManager/Exp 2>/dev/null || echo "0")
         [[ -z "$_expuser" ]] && _expuser="0"
         _onop=$(grep -c "10.8.0" /etc/openvpn/openvpn-status.log 2>/dev/null || echo 0)
@@ -301,5 +305,7 @@ menu() {
     menu_principal
 }
 
-# Launch
-menu_principal
+# Launch if executed directly
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    menu_principal
+fi

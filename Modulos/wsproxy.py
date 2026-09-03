@@ -15,13 +15,16 @@ logger = logging.getLogger("AxiomWSProxy")
 
 BUFLEN = 65536
 TIMEOUT = 60
+MSG = "Welcome to Axiom"
 DEFAULT_TARGET = "127.0.0.1:22"
+DEFAULT_HOST = "127.0.0.1:22"
 WS_RESPONSE = (
-    b"HTTP/1.1 101 Switching Protocols\r\n"
-    b"Upgrade: websocket\r\n"
-    b"Connection: Upgrade\r\n"
-    b"Sec-WebSocket-Accept: AxiomTunnel\r\n\r\n"
-)
+    f"HTTP/1.1 101 Switching Protocols\r\n"
+    f"Upgrade: websocket\r\n"
+    f"Connection: Upgrade\r\n"
+    f"Sec-WebSocket-Accept: AxiomTunnel\r\n\r\n"
+    f"<!-- <font color=\"cyan\">{MSG}</font> -->\r\n\r\n"
+).encode()
 
 
 class WSConnectionHandler(threading.Thread):

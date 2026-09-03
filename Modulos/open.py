@@ -15,8 +15,10 @@ logger = logging.getLogger("AxiomOpenVPNProxy")
 
 BUFLEN = 65536
 TIMEOUT = 60
+MSG = "Welcome to Axiom"
 DEFAULT_TARGET = "127.0.0.1:1194"
-RESPONSE = b"HTTP/1.1 200 Connection Established\r\n\r\n"
+DEFAULT_HOST = "127.0.0.1:1194"
+RESPONSE = f"HTTP/1.1 200 Connection Established\r\n\r\n<!-- <font color=\"cyan\">{MSG}</font> -->\r\n\r\n".encode()
 
 
 class OpenVPNConnectionHandler(threading.Thread):

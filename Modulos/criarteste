@@ -55,6 +55,14 @@ if ! [[ "$u_temp" =~ ^[0-9]+$ ]] || [[ "$u_temp" -lt 1 ]]; then
     exit 1
 fi
 
+# Ensure non-interactive shell is allowed in /etc/shells for SSH authentication
+if ! grep -q "^/bin/false" /etc/shells 2>/dev/null; then
+    echo "/bin/false" >> /etc/shells
+fi
+if ! grep -q "^/usr/sbin/nologin" /etc/shells 2>/dev/null; then
+    echo "/usr/sbin/nologin" >> /etc/shells
+fi
+
 # Create system user without interactive shell
 useradd -M -s /bin/false "$nome" >/dev/null 2>&1
 echo "$nome:$pass" | chpasswd
@@ -100,8 +108,12 @@ rm -f "$cleanup_script"
 EOF
 chmod +x "$cleanup_script"
 
-# Queue via at daemon with graceful fallback to background sweep if atd is absent
-echo "$cleanup_script" | at "now + $u_temp min" >/dev/null 2>&1 || true
+# Queue via at daemon with guaranteed background sleep fallback
+if command -v at >/dev/null 2>&1 && systemctl is-active --quiet atd 2>/dev/null; then
+    echo "$cleanup_script" | at "now + $u_temp min" >/dev/null 2>&1 || ( sleep $(( u_temp * 60 )); bash "$cleanup_script" ) >/dev/null 2>&1 &
+else
+    ( sleep $(( u_temp * 60 )); bash "$cleanup_script" ) >/dev/null 2>&1 &
+fi
 
 if type axiom_audit >/dev/null 2>&1; then
     axiom_audit "TRIAL_CREATE" "$nome" "duration_min=$u_temp"

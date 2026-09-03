@@ -34,12 +34,15 @@ while read -r usline; do
         continue
     fi
 
-    # Count SSH sessions
-    ssh_conns=$(pgrep -u "$user" sshd 2>/dev/null | wc -l || echo "0")
-    drop_conns=$(pgrep -u "$user" dropbear 2>/dev/null | wc -l || echo "0")
+    # Count SSH sessions safely without pipefail abort
+    ssh_conns=$(pgrep -c -u "$user" sshd 2>/dev/null || true)
+    [[ -z "$ssh_conns" ]] && ssh_conns=0
+    drop_conns=$(pgrep -c -u "$user" dropbear 2>/dev/null || true)
+    [[ -z "$drop_conns" ]] && drop_conns=0
     ovp_conns=0
     if [[ -f /etc/openvpn/openvpn-status.log ]]; then
-        ovp_conns=$(grep -E ",${user}," /etc/openvpn/openvpn-status.log 2>/dev/null | wc -l || echo "0")
+        ovp_conns=$(grep -E -c ",${user}," /etc/openvpn/openvpn-status.log 2>/dev/null || true)
+        [[ -z "$ovp_conns" ]] && ovp_conns=0
     fi
 
     total_conns=$((ssh_conns + drop_conns + ovp_conns))
@@ -47,7 +50,10 @@ while read -r usline; do
     # Elapsed session time for first session (OpenSSH or Dropbear)
     session_time="--:--:--"
     if (( total_conns > 0 )); then
-        first_pid=$(pgrep -u "$user" 'sshd|dropbear' 2>/dev/null | head -n1 || echo "")
+        first_pid=$(pgrep -u "$user" sshd 2>/dev/null | head -n1 || true)
+        if [[ -z "$first_pid" ]]; then
+            first_pid=$(pgrep -u "$user" dropbear 2>/dev/null | head -n1 || true)
+        fi
         if [[ -n "$first_pid" ]]; then
             session_time=$(ps -p "$first_pid" -o etime= 2>/dev/null | xargs || echo "00:00:00")
         else

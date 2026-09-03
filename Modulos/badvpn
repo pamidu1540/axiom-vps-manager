@@ -4,6 +4,17 @@ set -euo pipefail
 
 EXPECTED_SHA256="48832133b7bdff20261bac41713e3ea231404b85764c1143d2095311867fb43f"
 
+# Source common library
+LIB_PATH="/etc/axiom/lib/axiom-common.sh"
+if [[ ! -f "$LIB_PATH" ]]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+    LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
+fi
+if [[ -f "$LIB_PATH" ]]; then
+    # shellcheck source=lib/axiom-common.sh
+    source "$LIB_PATH"
+fi
+
 install_binary() {
     if [[ ! -f "/bin/badvpn-udpgw" ]]; then
         if [[ -f "/opt/axiom/Modulos/badvpn-udpgw" ]]; then
@@ -40,7 +51,14 @@ start_badvpn() {
         pkill -f "badvpn-udpgw --listen-addr 127.0.0.1:$port" 2>/dev/null || true
         screen -dmS udpvpn /bin/badvpn-udpgw --listen-addr "127.0.0.1:$port" --max-clients 10000 --max-connections-for-client 8 --client-socket-sndbuf 10000
     fi
+
+    if type axiom_firewall_allow_port >/dev/null 2>&1; then
+        axiom_firewall_allow_port "$port" "udp" "BadVPN UDP Gateway"
+    fi
     echo -e "\033[1;32m[✓] BadVPN UDP Gateway activated on port $port\033[0m"
+    if type axiom_firewall_advisory >/dev/null 2>&1; then
+        axiom_firewall_advisory "$port" "UDP" "BadVPN Gateway"
+    fi
 }
 
 stop_badvpn() {

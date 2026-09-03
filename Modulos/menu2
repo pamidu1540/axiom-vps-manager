@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# Axiom VPS Manager — Advanced Operations Menu Direct Entrypoint
+# ==============================================================================
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd || echo "")"
+MENU_SCRIPT="$SCRIPT_DIR/menu"
+
+if [[ ! -f "$MENU_SCRIPT" ]]; then
+    MENU_SCRIPT="/opt/axiom/Modulos/menu"
+fi
+
+if [[ -f "$MENU_SCRIPT" ]]; then
+    # Source the menu and invoke menu2
+    # shellcheck source=Modulos/menu
+    (
+        source "$MENU_SCRIPT"
+        menu2
+    )
+else
+    echo "Error: Axiom menu script not found." >&2
+    exit 1
+fi

@@ -20,3 +20,9 @@ Thumbs.db
 *.tar.gz
 *.zip
 root/backups/
+
+# Local testing & agent artifacts
+.agents/
+tests/
+*.log
+*.tmp

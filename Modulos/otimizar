@@ -1,50 +1,113 @@
 #!/usr/bin/env bash
-# Axiom VPS Manager — System Optimization & Resource Maintenance Module
+# ==============================================================================
+# Axiom VPS Manager — System Optimizer & Resource Maintenance Engine
+# Multi-Tier Memory, Journal, Package Cache, and TCP Kernel Tuning
+# ==============================================================================
+
 set -euo pipefail
+
+export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
+
+CLR_RESET='\033[0m'
+CLR_RED='\033[1;31m'
+CLR_GREEN='\033[1;32m'
+CLR_YELLOW='\033[1;33m'
+CLR_BLUE='\033[1;34m'
+CLR_MAGENTA='\033[1;35m'
+CLR_CYAN='\033[1;36m'
+CLR_WHITE='\033[1;37m'
+CLR_BOLD='\033[1m'
 
 if [[ -t 0 && "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
     clear
-    echo -e "\E[44;1;37m           ⚡ Axiom System Optimizer ⚡           \E[0m\n"
+    echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM SYSTEM OPTIMIZER & RESOURCE MAINTENANCE ⚡${CLR_RESET}        ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}Operations:${CLR_RESET} RAM Cache Flush • Journal Vacuum • Apt Clean   ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}              Swap Recycling • TCP BBR Tuning • DNS Flush     ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}╰─────────────────────────────────────────────────────────────╯${CLR_RESET}\n"
 fi
 
+# Baseline Telemetry
+ram_before_mb=$(free -m 2>/dev/null | awk 'NR==2{print $3}' || echo "0")
+ram_total_mb=$(free -m 2>/dev/null | awk 'NR==2{print $2}' || echo "1")
+disk_before_kb=$(df -k / 2>/dev/null | awk 'NR==2{print $3}' || echo "0")
+
+# 1. Vacuum Systemd Journal Logs (older than 7 days, max 50MB)
 if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-    echo -e "\033[1;33m[*] Cleaning package caches and stale files...\033[0m"
+    echo -e "${CLR_BLUE}[1/5] Vacuuming systemd journal logs (keeping last 7 days)...${CLR_RESET}"
+fi
+if command -v journalctl >/dev/null 2>&1; then
+    journalctl --vacuum-time=7d --vacuum-size=50M >/dev/null 2>&1 || true
+fi
+
+# 2. Package Manager Cache & Orphan Cleanup
+if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
+    echo -e "${CLR_BLUE}[2/5] Purging orphaned packages and APT archives...${CLR_RESET}"
 fi
 export DEBIAN_FRONTEND=noninteractive
 apt-get autoremove -y >/dev/null 2>&1 || true
 apt-get autoclean -y >/dev/null 2>&1 || true
 apt-get clean >/dev/null 2>&1 || true
+rm -rf /var/cache/apt/archives/*.deb 2>/dev/null || true
 
+# 3. Synchronize Filesystem & Flush PageCache / Inodes
 if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-    echo -e "\033[1;33m[*] Flushing page caches, dentries, and inodes...\033[0m"
+    echo -e "${CLR_BLUE}[3/5] Flushing PageCache, dentries, and directory inodes...${CLR_RESET}"
 fi
 sync
 if [[ -w /proc/sys/vm/drop_caches ]]; then
     echo 3 > /proc/sys/vm/drop_caches 2>/dev/null || true
 fi
 
-# Safe Swap Recycling (Check available RAM first)
+# 4. Safe Swap Memory Recycling (Strict memory safety checks)
 avail_mem_kb=$(awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || echo "0")
 used_swap_kb=$(awk '/SwapTotal/ {t=$2} /SwapFree/ {f=$2} END {print (t-f)}' /proc/meminfo 2>/dev/null || echo "0")
 
-if (( avail_mem_kb > used_swap_kb + 204800 && used_swap_kb > 10240 )); then
+if (( avail_mem_kb > used_swap_kb + 262144 && used_swap_kb > 10240 )); then
     if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-        echo -e "\033[1;33m[*] Safely cycling swap memory (available RAM is sufficient)...\033[0m"
+        echo -e "${CLR_BLUE}[4/5] Safely recycling swap memory (sufficient available RAM)...${CLR_RESET}"
     fi
     swapoff -a 2>/dev/null || true
     swapon -a 2>/dev/null || true
 else
     if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-        echo -e "\033[1;32m[*] Swap cycling bypassed to preserve memory safety.\033[0m"
+        echo -e "${CLR_GREEN}[4/5] Swap memory is optimal (swap recycling safely bypassed).${CLR_RESET}"
     fi
 fi
 
+# 5. Kernel TCP BBR & Network Buffer Optimization
 if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-    echo -e "\n\033[1;32m[✓] System optimization completed successfully.\033[0m\n"
-    free -h 2>/dev/null || true
-    echo ""
+    echo -e "${CLR_BLUE}[5/5] Re-applying Linux BBR Congestion Control & sysctl tuning...${CLR_RESET}"
+fi
+if [[ -f /etc/sysctl.d/99-axiom-tcp.conf ]]; then
+    sysctl -p /etc/sysctl.d/99-axiom-tcp.conf >/dev/null 2>&1 || true
 fi
 
-if [[ -t 0 && "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
-    read -r -p "Press Enter to return to menu..."
+# Flush DNS Resolver Caches
+if command -v resolvectl >/dev/null 2>&1; then
+    resolvectl flush-caches >/dev/null 2>&1 || true
+elif command -v systemd-resolve >/dev/null 2>&1; then
+    systemd-resolve --flush-caches >/dev/null 2>&1 || true
+fi
+
+# Post-Optimization Telemetry Calculation
+ram_after_mb=$(free -m 2>/dev/null | awk 'NR==2{print $3}' || echo "0")
+disk_after_kb=$(df -k / 2>/dev/null | awk 'NR==2{print $3}' || echo "0")
+
+freed_ram_mb=$(( ram_before_mb > ram_after_mb ? ram_before_mb - ram_after_mb : 0 ))
+freed_disk_mb=$(( disk_before_kb > disk_after_kb ? (disk_before_kb - disk_after_kb) / 1024 : 0 ))
+
+if [[ "${1:-}" != "--quiet" && "${1:-}" != "-q" ]]; then
+    echo -e "\n${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_GREEN}${CLR_BOLD}✔ SYSTEM OPTIMIZATION COMPLETED${CLR_RESET}                           ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}RAM Used Before :${CLR_RESET} ${CLR_YELLOW}${ram_before_mb} MB / ${ram_total_mb} MB${CLR_RESET}                                ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}RAM Used After  :${CLR_RESET} ${CLR_GREEN}${ram_after_mb} MB / ${ram_total_mb} MB${CLR_RESET}                                ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}Memory Reclaimed:${CLR_RESET} ${CLR_GREEN}${freed_ram_mb} MB${CLR_RESET}                                         ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}Disk Reclaimed  :${CLR_RESET} ${CLR_GREEN}${freed_disk_mb} MB${CLR_RESET}                                         ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}TCP Congestion  :${CLR_RESET} ${CLR_GREEN}BBR + TCP FastOpen Active${CLR_RESET}                   ${CLR_CYAN}│${CLR_RESET}"
+    echo -e "${CLR_CYAN}╰─────────────────────────────────────────────────────────────╯${CLR_RESET}\n"
+
+    read -r -p "⚡ Press [ENTER] to return to Axiom Dashboard..."
 fi

@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-AXIOM_VERSION="1.0.0"
+AXIOM_VERSION="1.0.1"
 REPO_OWNER="pamidu1540"
 REPO_NAME="axiom-vps-manager"
 REPO_BRANCH="main"
@@ -56,11 +56,12 @@ fi
 # 3. Update repositories and install dependencies
 echo -e "${CLR_BLUE}[*] Updating package index and installing core dependencies...${CLR_RESET}"
 export DEBIAN_FRONTEND=noninteractive
-apt-get update -y >/dev/null
+apt-get update -y >/dev/null 2>&1 || true
 
 PACKAGES=(
     "python3"
     "python3-pip"
+    "python3-setuptools"
     "curl"
     "wget"
     "unzip"
@@ -69,10 +70,14 @@ PACKAGES=(
     "lsof"
     "net-tools"
     "nftables"
+    "iptables"
     "cron"
+    "at"
+    "procps"
+    "bc"
+    "ca-certificates"
     "openssh-server"
     "screen"
-    "speedtest-cli"
     "git"
 )
 
@@ -83,7 +88,66 @@ for pkg in "${PACKAGES[@]}"; do
     fi
 done
 
-# 4. Create Directory Layout
+# Ensure python symlink points to python3
+if ! command -v python >/dev/null 2>&1 && command -v python3 >/dev/null 2>&1; then
+    ln -sf "$(command -v python3)" /usr/bin/python 2>/dev/null || true
+    ln -sf "$(command -v python3)" /usr/local/bin/python 2>/dev/null || true
+fi
+
+# 4. Configure Shells & SSH Server for VPS Tunneling
+echo -e "${CLR_BLUE}[*] Hardening and configuring SSH server for VPN tunnels...${CLR_RESET}"
+
+# Register non-interactive shells in /etc/shells so password logins are never rejected
+if ! grep -q "^/bin/false" /etc/shells 2>/dev/null; then
+    echo "/bin/false" >> /etc/shells
+fi
+if ! grep -q "^/usr/sbin/nologin" /etc/shells 2>/dev/null; then
+    echo "/usr/sbin/nologin" >> /etc/shells
+fi
+
+# Configure SSH daemon for password authentication and tunneling
+mkdir -p /etc/ssh/sshd_config.d
+cat << 'EOF' > /etc/ssh/sshd_config.d/99-axiom.conf
+# Axiom VPS Manager — SSH Tunneling Configuration
+Port 22
+PasswordAuthentication yes
+PermitRootLogin yes
+PermitTunnel yes
+TCPKeepAlive yes
+ClientAliveInterval 60
+ClientAliveCountMax 3
+Banner /etc/bannerssh
+EOF
+chmod 644 /etc/ssh/sshd_config.d/99-axiom.conf
+
+# Also patch main sshd_config for systems that do not include sshd_config.d/
+if [[ -f /etc/ssh/sshd_config ]]; then
+    sed -i -E 's/^#?Port 22/Port 22/' /etc/ssh/sshd_config 2>/dev/null || true
+    sed -i -E 's/^#?PasswordAuthentication (no|yes)/PasswordAuthentication yes/' /etc/ssh/sshd_config 2>/dev/null || true
+    sed -i -E 's/^#?PermitRootLogin .*/PermitRootLogin yes/' /etc/ssh/sshd_config 2>/dev/null || true
+    if ! grep -q "^PasswordAuthentication yes" /etc/ssh/sshd_config 2>/dev/null; then
+        echo "PasswordAuthentication yes" >> /etc/ssh/sshd_config
+    fi
+    if ! grep -q "^PermitTunnel yes" /etc/ssh/sshd_config 2>/dev/null; then
+        echo "PermitTunnel yes" >> /etc/ssh/sshd_config
+    fi
+fi
+
+# Enable IPv4 Kernel Forwarding permanently
+mkdir -p /etc/sysctl.d
+echo "net.ipv4.ip_forward=1" > /etc/sysctl.d/99-axiom.conf
+sysctl -p /etc/sysctl.d/99-axiom.conf >/dev/null 2>&1 || sysctl --system >/dev/null 2>&1 || true
+
+# Safely restart SSH
+if systemctl is-active --quiet sshd 2>/dev/null; then
+    systemctl restart sshd 2>/dev/null || true
+elif systemctl is-active --quiet ssh 2>/dev/null; then
+    systemctl restart ssh 2>/dev/null || true
+else
+    service ssh restart >/dev/null 2>&1 || service sshd restart >/dev/null 2>&1 || true
+fi
+
+# 5. Create Directory Layout
 echo -e "${CLR_BLUE}[*] Creating directory structures...${CLR_RESET}"
 mkdir -p -m 755 "$INSTALL_DIR"
 mkdir -p -m 700 "$BACKUP_DIR"
@@ -92,12 +156,15 @@ mkdir -p -m 755 /etc/axiom
 mkdir -p -m 755 /etc/axiom/lib
 mkdir -p -m 755 /etc/VPSManager
 mkdir -p -m 755 /etc/VPSManager/userteste
+mkdir -p -m 755 /etc/VPSManager/senha
 mkdir -p -m 700 /etc/VPSManager/.tmp
+mkdir -p -m 755 /etc/openvpn
+mkdir -p -m 755 /var/www/html/server
 touch /root/usuarios.db
 chmod 600 /root/usuarios.db 2>/dev/null || true
 
-# 5. Ingest or Download Codebase
-echo -e "${CLR_BLUE}[*] Fetching Axiom components from GitHub repository...${CLR_RESET}"
+# 6. Ingest or Download Codebase
+echo -e "${CLR_BLUE}[*] Fetching Axiom components from repository...${CLR_RESET}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" 2>/dev/null && pwd || echo "")"
 if [[ -n "$SCRIPT_DIR" && -d "$SCRIPT_DIR/Modulos" && -f "$SCRIPT_DIR/install.sh" ]]; then
@@ -132,8 +199,60 @@ if [[ -d "$INSTALL_DIR/lib" ]]; then
     chmod -R 755 /etc/axiom/lib/* 2>/dev/null || true
 fi
 
-# 6. Setup CLI Symlinks for ALL modules and commands
-echo -e "${CLR_BLUE}[*] Registering global command symlinks in /usr/local/bin and /bin...${CLR_RESET}"
+# Populate /etc/VPSManager dependencies
+if [[ -f "$INSTALL_DIR/Install/ShellBot.sh" ]]; then
+    cp -f "$INSTALL_DIR/Install/ShellBot.sh" /etc/VPSManager/ShellBot.sh
+    chmod 755 /etc/VPSManager/ShellBot.sh
+fi
+for vps_tool in bot botgerador botsshteste open.py proxy.py wsproxy.py cabecalho; do
+    if [[ -f "$INSTALL_DIR/Modulos/$vps_tool" ]]; then
+        cp -f "$INSTALL_DIR/Modulos/$vps_tool" "/etc/VPSManager/$vps_tool"
+        chmod 755 "/etc/VPSManager/$vps_tool"
+    fi
+done
+if [[ -f "$INSTALL_DIR/Install/EasyRSA-3.0.1.tgz" ]]; then
+    cp -f "$INSTALL_DIR/Install/EasyRSA-3.0.1.tgz" /etc/openvpn/EasyRSA-3.0.1.tgz 2>/dev/null || true
+fi
+
+# 7. Install Systemd Services
+echo -e "${CLR_BLUE}[*] Configuring background daemons and systemd units...${CLR_RESET}"
+if [[ -d "$INSTALL_DIR/systemd" ]]; then
+    for s_file in "$INSTALL_DIR"/systemd/*.service; do
+        if [[ -f "$s_file" ]]; then
+            cp -f "$s_file" /etc/systemd/system/
+            chmod 644 "/etc/systemd/system/$(basename "$s_file")"
+        fi
+    done
+    systemctl daemon-reload 2>/dev/null || true
+fi
+
+# Enable auxiliary timers & cron
+systemctl enable --now atd 2>/dev/null || true
+systemctl enable --now cron 2>/dev/null || systemctl enable --now crond 2>/dev/null || true
+
+# 8. Setup /etc/autostart & Cron Watchdogs
+if [[ ! -f /etc/autostart ]]; then
+    cat << 'EOF' > /etc/autostart
+#!/usr/bin/env bash
+# Axiom VPS Manager — Service Watchdog & Auto-Start
+clear
+EOF
+    chmod +x /etc/autostart
+fi
+
+# Register automated crontab tasks safely
+echo -e "${CLR_BLUE}[*] Registering system maintenance crontabs...${CLR_RESET}"
+(
+    crontab -l 2>/dev/null | grep -vE "(uexpired|onlineapp|verifatt|autostart)" || true
+    echo "@reboot /etc/autostart"
+    echo "* * * * * /etc/autostart"
+    echo "0 */6 * * * /usr/local/bin/uexpired"
+    echo "*/1 * * * * /usr/local/bin/onlineapp.sh"
+    echo "@daily /usr/local/bin/verifatt"
+) | crontab - 2>/dev/null || true
+
+# 9. Setup CLI Symlinks for ALL modules and commands
+echo -e "${CLR_BLUE}[*] Registering global command symlinks in /usr/local/bin, /usr/bin, and /bin...${CLR_RESET}"
 if [[ -d "$INSTALL_DIR/Modulos" ]]; then
     for mod in "$INSTALL_DIR/Modulos"/*; do
         if [[ -f "$mod" ]]; then
@@ -146,12 +265,7 @@ if [[ -d "$INSTALL_DIR/Modulos" ]]; then
     done
 fi
 
-# Main entrypoint (Axiom CLI & TUI)
-ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/axiom
-ln -sf "$INSTALL_DIR/Modulos/menu" /bin/axiom 2>/dev/null || true
-ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/axiom 2>/dev/null || true
-rm -f /usr/local/bin/menu /bin/menu /usr/bin/menu 2>/dev/null || true
-
+# Uninstaller link
 if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
     chmod 755 "$INSTALL_DIR/uninstall.sh"
     ln -sf "$INSTALL_DIR/uninstall.sh" /usr/local/bin/axiom-uninstall
@@ -159,13 +273,13 @@ if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
     ln -sf "$INSTALL_DIR/uninstall.sh" /usr/bin/axiom-uninstall 2>/dev/null || true
 fi
 
-# 7. Global PATH Profile
+# 10. Global PATH Profile
 cat << 'EOF' > /etc/profile.d/axiom.sh
 export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
 EOF
 chmod 644 /etc/profile.d/axiom.sh 2>/dev/null || true
 
-# 8. Version metadata files
+# 11. Version metadata files
 if [[ -f "$INSTALL_DIR/Install/versao" ]]; then
     cp "$INSTALL_DIR/Install/versao" /etc/axiom/versao 2>/dev/null || true
     cp "$INSTALL_DIR/Install/versao" /bin/versao 2>/dev/null || true
@@ -173,15 +287,22 @@ if [[ -f "$INSTALL_DIR/Install/versao" ]]; then
     cp "$INSTALL_DIR/Install/versao" /etc/VPSManager/versao 2>/dev/null || true
 fi
 
-# 9. Record IP Address
+# 12. Record Public IP Address
 PUBLIC_IP=$(curl -s -4 --connect-timeout 5 ifconfig.me || curl -s -4 --connect-timeout 5 icanhazip.com || echo "127.0.0.1")
 echo "$PUBLIC_IP" > /etc/IP
 
-# 10. Install Python package if Python 3 environment is present
+# 13. Install Python package if Python 3 environment is present
 if command -v pip3 >/dev/null 2>&1; then
     echo -e "${CLR_BLUE}[*] Installing Axiom Python package...${CLR_RESET}"
     pip3 install --break-system-packages -e "$INSTALL_DIR" 2>/dev/null || pip3 install -e "$INSTALL_DIR" 2>/dev/null || true
 fi
+
+# 14. Primary CLI Entrypoint Assertion (Axiom Interactive TUI)
+# Ensure /usr/local/bin/axiom ALWAYS launches Modulos/menu
+ln -sf "$INSTALL_DIR/Modulos/menu" /usr/local/bin/axiom
+ln -sf "$INSTALL_DIR/Modulos/menu" /bin/axiom 2>/dev/null || true
+ln -sf "$INSTALL_DIR/Modulos/menu" /usr/bin/axiom 2>/dev/null || true
+rm -f /usr/local/bin/menu /bin/menu /usr/bin/menu 2>/dev/null || true
 
 echo -e "\n${CLR_GREEN}======================================================${CLR_RESET}"
 echo -e "${CLR_GREEN}${CLR_BOLD}  ✔ Axiom VPS Manager Installed Successfully!         ${CLR_RESET}"

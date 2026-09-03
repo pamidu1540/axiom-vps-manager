@@ -1,56 +1,110 @@
 #!/usr/bin/env bash
-# Axiom VPS Manager — Torrent & P2P Filter Module
+# ==============================================================================
+# Axiom VPS Manager — Torrent & P2P Traffic Firewall Filter
+# Modern nftables & iptables Isolated Chain Rules
+# ==============================================================================
+
 set -euo pipefail
+
+export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
 
 BLOCK_FLAG="/etc/axiom/torrent_blocked"
 mkdir -p /etc/axiom
 
+CLR_RESET='\033[0m'
+CLR_RED='\033[1;31m'
+CLR_GREEN='\033[1;32m'
+CLR_YELLOW='\033[1;33m'
+CLR_BLUE='\033[1;34m'
+CLR_MAGENTA='\033[1;35m'
+CLR_CYAN='\033[1;36m'
+CLR_WHITE='\033[1;37m'
+CLR_BOLD='\033[1m'
+
 clear
-tput setaf 7 ; tput setab 4 ; tput bold ; printf '%40s%s%-10s\n' "  Axiom - Torrent & P2P Traffic Filter  " ; tput sgr0
-echo ""
+echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
+echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM TORRENT & P2P FIREWALL FILTER ⚡${CLR_RESET}                 ${CLR_CYAN}│${CLR_RESET}"
+echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
+echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}Engine:${CLR_RESET} Isolated AXIOM_TORRENT chain (nftables / iptables)    ${CLR_CYAN}│${CLR_RESET}"
+echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}Scope :${CLR_RESET} Blocks BitTorrent tracker announce, DHT, & P2P ports  ${CLR_CYAN}│${CLR_RESET}"
+echo -e "${CLR_CYAN}╰─────────────────────────────────────────────────────────────╯${CLR_RESET}\n"
 
 apply_block() {
-    echo -e "\033[1;33m[*] Applying BitTorrent port and signature filters...\033[0m"
-    # BitTorrent Standard Ports (TCP/UDP 6881-6889, 51413)
-    iptables -N AXIOM_TORRENT 2>/dev/null || iptables -F AXIOM_TORRENT
-    while iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null; do :; done
-    while iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null; do :; done
-    iptables -I FORWARD 1 -j AXIOM_TORRENT
-    iptables -I OUTPUT 1 -j AXIOM_TORRENT
+    echo -e "${CLR_BLUE}[*] Applying BitTorrent and P2P traffic filters...${CLR_RESET}"
 
-    iptables -A AXIOM_TORRENT -p tcp --dport 6881:6889 -j DROP
-    iptables -A AXIOM_TORRENT -p udp --dport 6881:6889 -j DROP
-    iptables -A AXIOM_TORRENT -p tcp --dport 51413 -j DROP
-    iptables -A AXIOM_TORRENT -p udp --dport 51413 -j DROP
-    
+    # 1. nftables Rule (if nftables is active)
+    if command -v nft >/dev/null 2>&1; then
+        if nft list tables 2>/dev/null | grep -q "inet axiom"; then
+            nft add chain inet axiom p2p_filter '{ type filter hook forward priority -10; policy accept; }' 2>/dev/null || true
+            nft add rule inet axiom p2p_filter tcp dport '{ 6881-6889, 51413 }' drop 2>/dev/null || true
+            nft add rule inet axiom p2p_filter udp dport '{ 6881-6889, 51413 }' drop 2>/dev/null || true
+        fi
+    fi
+
+    # 2. iptables Isolated Chain
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -N AXIOM_TORRENT 2>/dev/null || iptables -F AXIOM_TORRENT
+        while iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null; do :; done
+        while iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null; do :; done
+        iptables -I FORWARD 1 -j AXIOM_TORRENT
+        iptables -I OUTPUT 1 -j AXIOM_TORRENT
+
+        # Standard BitTorrent client ports
+        iptables -A AXIOM_TORRENT -p tcp --dport 6881:6889 -j DROP
+        iptables -A AXIOM_TORRENT -p udp --dport 6881:6889 -j DROP
+        iptables -A AXIOM_TORRENT -p tcp --dport 51413 -j DROP
+        iptables -A AXIOM_TORRENT -p udp --dport 51413 -j DROP
+
+        # String matching for BitTorrent protocol handshakes (if kernel xt_string is supported)
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "BitTorrent" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "BitTorrent protocol" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "peer_id=" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string ".torrent" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "announce.php?passkey=" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "torrent" -j DROP 2>/dev/null || true
+        iptables -A AXIOM_TORRENT -m string --algo bm --string "info_hash" -j DROP 2>/dev/null || true
+    fi
+
     touch "$BLOCK_FLAG"
     touch /etc/Plus-torrent 2>/dev/null || true
-    echo -e "\033[1;32m[✓] Torrent and P2P traffic blocked successfully.\033[0m\n"
+    echo -e "\n${CLR_GREEN}[✓] Torrent and P2P traffic is now BLOCKED.${CLR_RESET}\n"
 }
 
 remove_block() {
-    echo -e "\033[1;33m[*] Removing BitTorrent filters...\033[0m"
-    while iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null; do :; done
-    while iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null; do :; done
-    iptables -F AXIOM_TORRENT 2>/dev/null || true
-    iptables -X AXIOM_TORRENT 2>/dev/null || true
+    echo -e "${CLR_BLUE}[*] Removing BitTorrent filters...${CLR_RESET}"
+
+    if command -v nft >/dev/null 2>&1; then
+        nft delete chain inet axiom p2p_filter 2>/dev/null || true
+    fi
+
+    if command -v iptables >/dev/null 2>&1; then
+        while iptables -D FORWARD -j AXIOM_TORRENT 2>/dev/null; do :; done
+        while iptables -D OUTPUT -j AXIOM_TORRENT 2>/dev/null; do :; done
+        iptables -F AXIOM_TORRENT 2>/dev/null || true
+        iptables -X AXIOM_TORRENT 2>/dev/null || true
+    fi
+
     rm -f "$BLOCK_FLAG"
     rm -f /etc/Plus-torrent 2>/dev/null || true
-    echo -e "\033[1;32m[✓] Torrent filters removed safely without flushing base firewall.\033[0m\n"
+    echo -e "\n${CLR_GREEN}[✓] BitTorrent traffic is now ALLOWED (Filters cleared safely).${CLR_RESET}\n"
 }
 
 if [[ -f "$BLOCK_FLAG" ]]; then
-    echo -e "\033[1;33mStatus: \033[1;32mBitTorrent is currently BLOCKED\033[0m\n"
-    read -r -p "Do you want to UNBLOCK BitTorrent? [y/N]: " resp
+    echo -e "  ${CLR_WHITE}Current Status :${CLR_RESET} ${CLR_RED}${CLR_BOLD}● BLOCKED${CLR_RESET}\n"
+    read -r -p "⚡ Do you want to UNBLOCK BitTorrent? [y/N]: " resp
     if [[ "$resp" =~ ^[yY]$ ]]; then
         remove_block
+    else
+        echo -e "\n${CLR_YELLOW}No changes made.${CLR_RESET}\n"
     fi
 else
-    echo -e "\033[1;33mStatus: \033[1;31mBitTorrent is currently ALLOWED\033[0m\n"
-    read -r -p "Do you want to BLOCK BitTorrent traffic? [y/N]: " resp
+    echo -e "  ${CLR_WHITE}Current Status :${CLR_RESET} ${CLR_GREEN}${CLR_BOLD}○ ALLOWED${CLR_RESET}\n"
+    read -r -p "⚡ Do you want to BLOCK BitTorrent traffic? [y/N]: " resp
     if [[ "$resp" =~ ^[yY]$ ]]; then
         apply_block
+    else
+        echo -e "\n${CLR_YELLOW}No changes made.${CLR_RESET}\n"
     fi
 fi
 
-read -r -p "Press Enter to return to menu..."
+read -r -p "⚡ Press [ENTER] to return to Axiom Dashboard..."

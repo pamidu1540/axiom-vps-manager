@@ -1,85 +1,62 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# ==============================================================================
+# Axiom VPS Manager — Script Update Checker & Installer
+# ==============================================================================
+
+set -euo pipefail
+
+CLR_RESET='\033[0m'
+CLR_RED='\033[1;31m'
+CLR_GREEN='\033[1;32m'
+CLR_YELLOW='\033[1;33m'
+CLR_CYAN='\033[1;36m'
+CLR_BOLD='\033[1m'
 
 clear
+echo -e "${CLR_CYAN}====================================================${CLR_RESET}"
+echo -e "${CLR_YELLOW}${CLR_BOLD}       ⚡ Axiom VPS Manager — Update Checker ⚡        ${CLR_RESET}"
+echo -e "${CLR_CYAN}====================================================${CLR_RESET}\n"
 
-fun_bar () {
+fun_bar() {
+    local cmd1="${1:-}"
+    local pid
+    ( eval "$cmd1" >/dev/null 2>&1 ) &
+    pid=$!
 
-comando[0]="$1"
+    local spin=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+    local i=0
+    local timeout=30
+    local elapsed=0
 
-comando[1]="$2"
-
- (
-
-[[ -e $HOME/fim ]] && rm $HOME/fim
-
-${comando[0]} > /dev/null 2>&1
-
-${comando[1]} > /dev/null 2>&1
-
-touch $HOME/fim
-
- ) > /dev/null 2>&1 &
-
- tput civis
-
-echo -ne "   \033[1;33mPLEASE WAIT ... \033[1;37m- \033[1;33m["
-
-while true; do
-
-   for((i=0; i<18; i++)); do
-
-   echo -ne "\033[1;31m#"
-
-   sleep 0.1s
-
-   done
-
-   [[ -e $HOME/fim ]] && rm $HOME/fim && break
-
-   echo -e "\033[1;33m]"
-
-   sleep 1s
-
-   tput cuu1
-
-   tput dl1
-
-   echo -ne "   \033[1;33mPLEASE WAIT ... \033[1;37m- \033[1;33m["
-
-done
-
-echo -e "\033[1;33m]\033[1;37m -\033[1;32m OK !\033[1;37m"
-
-tput cnorm
-
+    tput civis 2>/dev/null || true
+    while kill -0 "$pid" 2>/dev/null; do
+        printf "\r  ${CLR_YELLOW}Checking for updates... [${CLR_CYAN}%s${CLR_YELLOW}]${CLR_RESET} " "${spin[i % 10]}"
+        ((i++))
+        sleep 0.1
+        ((elapsed += 1))
+        if (( elapsed > timeout * 10 )); then
+            kill -9 "$pid" 2>/dev/null || true
+            break
+        fi
+    done
+    wait "$pid" 2>/dev/null || true
+    printf "\r  ${CLR_YELLOW}Checking for updates... [${CLR_GREEN}✔${CLR_YELLOW}] - ${CLR_GREEN}DONE!${CLR_RESET}\n"
+    tput cnorm 2>/dev/null || true
 }
 
-echo " "
-
-fun_atts () {
-  rm -f /tmp/att 2>/dev/null || true
-  curl -fsSL -o /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || wget -q -O /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || true
-} > /dev/null 2>&1
-
-echo -e "⚡ Axiom VPS Manager ⚡"
-
-echo " "
-
-echo -e "   \033[1;32m◇ CHECKING FOR AVAILABLE UPDATES\033[0m\n"
-
-fun_bar 'fun_atts'
-
-[[ ! -f "/tmp/att" ]] && {
-
-	echo -e "\n\033[1;31m◇ ERROR CONNECTING TO SERVER\n"
-
-	echo -ne "\033[1;31m◇ ENTER \033[1;33mto return to \033[1;32mMENU!\033[0m"; read
-
-	menu
-
+fetch_remote_version() {
+    rm -f /tmp/att 2>/dev/null || true
+    curl -fsSL -o /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || \
+    wget -q -O /tmp/att https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/Install/versao 2>/dev/null || true
 }
 
-echo " "
+fun_bar 'fetch_remote_version'
+
+if [[ ! -f "/tmp/att" || ! -s "/tmp/att" ]]; then
+    echo -e "\n${CLR_RED}[!] Could not reach GitHub update server. Check internet connection.${CLR_RESET}\n"
+    read -r -p "Press Enter to return..."
+    exit 0
+fi
 
 local_versao=""
 for vf in /bin/versao /etc/axiom/versao /opt/axiom/versao /etc/VPSManager/versao; do
@@ -88,63 +65,42 @@ for vf in /bin/versao /etc/axiom/versao /opt/axiom/versao /etc/VPSManager/versao
         break
     fi
 done
+
 if [[ -n "$local_versao" ]]; then
-    vrs1=$(sed -n '1 p' "$local_versao" | sed -e 's/[^0-9]//g')
+    vrs1=$(sed -n '1 p' "$local_versao" 2>/dev/null | sed -e 's/[^0-9]//g' || echo "100")
 else
     vrs1="100"
 fi
+vrs2=$(sed -n '1 p' /tmp/att 2>/dev/null | sed -e 's/[^0-9]//g' || echo "100")
 
-vrs2=$(sed -n '1 p' /tmp/att | sed -e 's/[^0-9]//g')
+if [[ "$vrs1" == "$vrs2" ]]; then
+    echo -e "\n${CLR_GREEN}[✓] Axiom VPS Manager is up to date (Version $vrs1).${CLR_RESET}\n"
+    rm -f /tmp/att > /dev/null 2>&1 || true
+    read -r -p "Press Enter to return..."
+    exit 0
+fi
 
-[[ "$vrs1" == "$vrs2" ]] && {
+echo -e "\n${CLR_CYAN}⚡ A new Axiom update is available! (Current: $vrs1 -> New: $vrs2)${CLR_RESET}\n"
+echo -e "${CLR_WHITE}Release Notes / Version Details:${CLR_RESET}"
+while read -r linha; do
+    echo -e "  - ${CLR_YELLOW}$linha${CLR_RESET}"
+done < "/tmp/att"
+echo ""
 
-  echo -e " \033[1;36m   ◇ THE SCRIPT IS NOW UPDATED!\033[1;32m\n"
+read -r -p "Do you want to update now? [y/N]: " res
+if [[ "$res" =~ ^[yYsS]$ ]]; then
+    echo -e "\n${CLR_GREEN}[*] Downloading and applying latest Axiom update...${CLR_RESET}\n"
+    tmp_install=$(mktemp)
+    if curl -fsSL https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/install.sh -o "$tmp_install"; then
+        bash "$tmp_install"
+        rm -f "$tmp_install" /tmp/att
+        echo -e "\n${CLR_GREEN}[✓] Axiom VPS Manager updated successfully!${CLR_RESET}\n"
+    else
+        echo -e "\n${CLR_RED}[!] Update download failed.${CLR_RESET}\n"
+    fi
+else
+    echo -e "\n${CLR_YELLOW}Update postponed.${CLR_RESET}\n"
+fi
 
-  rm -f /tmp/att > /dev/null 2>&1
-
-  echo -ne " \033[1;31m◇ ENTER \033[1;33mto return to \033[1;32mMENU!\033[0m"; read
-
-  menu
-
-} || {
-
-  echo -e "  \033[1;36m◇ THERE IS A NEW UPDATE AVAILABLE!\033[1;33m\n"
-
-  echo -e "  \033[1;32m◇ UPDATE DETAILS:\033[0m\n"
-
-  while read linha; do
-
-    echo -e "  \033[1;37m- \033[1;33m$linha"
-
-  done < "/tmp/att"
-
-  echo " "
-
-  echo -ne "  \033[1;32m◇ WISH TO UPDATE \033[1;31m? \033[1;33m[s/n]:\033[1;37m "; read res
-
-  if [[ "$res" = s || "$res" = S ]];then
-
-    echo -e "\n\033[1;32m◇ STARTING UPDATE..."
-
-    sleep 3
-
-    curl -fsSL https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/install.sh -o install.sh && bash install.sh
-
-    clear
-
-    echo -e "\033[1;32m◇ SUCCESSFULLY UPDATED SCRIPT\033[0m\n"
-
-    rm /tmp/att > /dev/null 2>&1
-
-    echo -ne "\033[1;31m◇ ENTER \033[1;33mto return to \033[1;32mMENU!\033[0m"; read
-
-    menu
-
-  else
-
-    menu
-
-  fi
-
-}
-
+rm -f /tmp/att > /dev/null 2>&1 || true
+read -r -p "Press Enter to return..."
