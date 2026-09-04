@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — SlowDNS Client
-set -euo pipefail
 
 RED='\033[1;31m'
 GREEN='\033[1;32m'

@@ -78,8 +78,7 @@ limit1() {
         echo "ps x | grep 'limiter' | grep -v 'grep' && echo 'ON' || screen -dmS limiter limiter" >> /etc/autostart
     fi
     echo -e "\n${CLR_GREEN}[✓] User Limiter is now ACTIVE.${CLR_RESET}"
-    sleep 2
-    menu_principal
+    sleep 1.5
 }
 
 limit2() {
@@ -94,8 +93,7 @@ limit2() {
     }
     fun_bar 'fun_stplimiter' 'sleep 2'
     echo -e "\n${CLR_RED}[✓] User Limiter STOPPED.${CLR_RESET}"
-    sleep 2
-    menu_principal
+    sleep 1.5
 }
 
 limit_ssh() {
@@ -118,7 +116,6 @@ autoexec() {
         fun_bar 'offautmenu'
         echo -e "\n${CLR_RED}[✓] Auto-Execution DISABLED.${CLR_RESET}"
         sleep 1.5
-        menu2
     else
         clear
         echo -e "${CLR_GREEN}⚡ Activating Axiom Auto-Execution on Login...${CLR_RESET}\n"
@@ -130,7 +127,6 @@ autoexec() {
         fun_bar 'autmenu'
         echo -e "\n${CLR_GREEN}[✓] Auto-Execution ENABLED.${CLR_RESET}"
         sleep 1.5
-        menu2
     fi
 }
 

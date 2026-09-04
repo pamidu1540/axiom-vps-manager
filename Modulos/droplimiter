@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Dropbear Multi-Login Limiter
-set -euo pipefail
 
 database="/root/usuarios.db"
 touch "$database" 2>/dev/null || true

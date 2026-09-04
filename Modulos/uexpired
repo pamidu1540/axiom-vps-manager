@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Expired Users Counter
-set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"

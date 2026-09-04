@@ -4,7 +4,6 @@
 # Automatically launches Axiom dashboard on root SSH login.
 # ==============================================================================
 
-set -euo pipefail
 
 CLR_RESET='\033[0m'
 CLR_RED='\033[1;31m'

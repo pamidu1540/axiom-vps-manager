@@ -4,7 +4,6 @@
 # Zero-Flickering, Real-Time Progress Bar & Cloudflare Multi-CDN Precision
 # ==============================================================================
 
-set -euo pipefail
 
 export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
 

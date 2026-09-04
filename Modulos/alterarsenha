@@ -3,7 +3,6 @@
 # Axiom VPS Manager — Password Change Module
 # ==============================================================================
 
-set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
@@ -20,6 +19,7 @@ if type axiom_require_root >/dev/null 2>&1; then
     axiom_require_root
 elif [[ "$(id -u)" -ne 0 ]]; then
     echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    read -r -p "⚡ Press [ENTER] to return..."
     exit 1
 fi
 
@@ -28,11 +28,11 @@ tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Chan
 echo ""
 
 database="/root/usuarios.db"
-touch "$database"
+touch "$database" 2>/dev/null || true
 
-mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
+mapfile -t users_list < <(awk '{print $1}' "$database" 2>/dev/null | sort -u)
 if [[ ${#users_list[@]} -eq 0 ]]; then
-    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd | sort -u)
+    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd 2>/dev/null | sort -u)
 fi
 
 if [[ ${#users_list[@]} -eq 0 ]]; then
@@ -48,7 +48,11 @@ for i in "${!users_list[@]}"; do
 done
 echo ""
 
-read -r -p "Enter number or username: " sel
+read -r -p "Enter number or username (or '0' to cancel): " sel
+if [[ "$sel" == "0" || "$sel" == "q" || -z "$sel" ]]; then
+    exit 0
+fi
+
 target_user=""
 if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
     target_user="${users_list[$((sel - 1))]}"
@@ -62,7 +66,7 @@ if [[ -z "$target_user" ]] || ! id "$target_user" >/dev/null 2>&1; then
     exit 0
 fi
 
-read -r -s -p "Enter new password for $target_user (min 8 chars, empty for random): " new_pass
+read -r -s -p "Enter new password for $target_user (min 8 chars, press Enter for auto-generate): " new_pass
 echo ""
 if [[ -z "$new_pass" ]]; then
     new_pass=$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 12 || echo "Ax$(date +%s%N | tail -c 8)")

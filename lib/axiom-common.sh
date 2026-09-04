@@ -2,11 +2,18 @@
 # ==============================================================================
 # Axiom VPS Manager — Shared Helper Library
 # Provides logging, security assertions, safe tempfiles, firewall rules, and OS checks.
-# ==============================================================================
+# Note: Do not enable set -e or set -u in a sourced common library,
+# as it would unexpectedly alter the runtime environment of interactive caller scripts.
 
-set -euo pipefail
-
-AXIOM_LOG_FILE="/var/log/axiom/axiom.log"
+if ! command -v netstat >/dev/null 2>&1; then
+    netstat() {
+        if command -v ss >/dev/null 2>&1; then
+            ss "$@"
+        else
+            return 1
+        fi
+    }
+fi
 AXIOM_AUDIT_FILE="/var/log/axiom/audit.log"
 
 # Colors for TUI

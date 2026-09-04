@@ -3,7 +3,6 @@
 # Axiom VPS Manager — Change Connection Limit Module
 # ==============================================================================
 
-set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
@@ -20,19 +19,20 @@ if type axiom_require_root >/dev/null 2>&1; then
     axiom_require_root
 elif [[ "$(id -u)" -ne 0 ]]; then
     echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    read -r -p "⚡ Press [ENTER] to return..."
     exit 1
 fi
 
 database="/root/usuarios.db"
-touch "$database"
+touch "$database" 2>/dev/null || true
 
 clear
 tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Change Connection Limit  " ; tput sgr0
 echo ""
 
-mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
+mapfile -t users_list < <(awk '{print $1}' "$database" 2>/dev/null | sort -u)
 if [[ ${#users_list[@]} -eq 0 ]]; then
-    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd | sort -u)
+    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd 2>/dev/null | sort -u)
 fi
 
 if [[ ${#users_list[@]} -eq 0 ]]; then
@@ -45,13 +45,17 @@ echo -e "\033[1;33mManaged Users & Current Limits:\033[0m\n"
 for i in "${!users_list[@]}"; do
     idx=$((i + 1))
     u="${users_list[$i]}"
-    curr_limit=$(grep -w "^$u" "$database" | awk '{print $2}' || echo "1")
+    curr_limit=$(grep -w "^$u" "$database" 2>/dev/null | awk '{print $2}' || echo "1")
     [[ -z "$curr_limit" ]] && curr_limit="1"
     echo -e "[\033[1;32m$idx\033[0m] \033[1;37m$u\033[0m — Current Limit: \033[1;36m$curr_limit\033[0m"
 done
 echo ""
 
-read -r -p "Enter user number or username: " sel
+read -r -p "Enter user number or username (or '0' to cancel): " sel
+if [[ "$sel" == "0" || "$sel" == "q" || -z "$sel" ]]; then
+    exit 0
+fi
+
 target_user=""
 if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
     target_user="${users_list[$((sel - 1))]}"
@@ -65,7 +69,10 @@ if [[ -z "$target_user" ]] || ! id "$target_user" >/dev/null 2>&1; then
     exit 0
 fi
 
-read -r -p "Enter new connection limit for $target_user [1-999]: " new_limit
+read -r -p "Enter new connection limit for $target_user [1-999, '0' to cancel]: " new_limit
+if [[ "$new_limit" == "0" || -z "$new_limit" ]]; then
+    exit 0
+fi
 if ! [[ "$new_limit" =~ ^[0-9]+$ ]] || [[ "$new_limit" -lt 1 ]] || [[ "$new_limit" -gt 999 ]]; then
     echo -e "\n\033[1;31m[!] Connection limit must be an integer between 1 and 999.\033[0m\n"
     read -r -p "⚡ Press [ENTER] to return..."

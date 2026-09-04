@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Key Generator Telegram Bot Activator
-set -euo pipefail
 
 if [[ $(screen -list 2>/dev/null | grep -c 'bot_gen') -eq 0 ]]; then
     clear

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — User Removal Module
-set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
@@ -54,6 +53,10 @@ echo -e "\033[1;31m[\033[1;36m0\033[1;31m]\033[1;33m RETURN"
 echo ""
 read -r -p "Selection: " resp
 
+if [[ "$resp" == "0" || "$resp" == "q" || -z "$resp" ]]; then
+    exit 0
+fi
+
 if [[ "$resp" == "1" ]]; then
     clear
     echo -e "\033[1;33m=== Managed User List ===\033[0m\n"
@@ -74,7 +77,10 @@ if [[ "$resp" == "1" ]]; then
         echo -e "[\033[1;32m$idx\033[0m] ${users_list[$i]}"
     done
     echo ""
-    read -r -p "Enter user number or username to remove: " sel
+    read -r -p "Enter user number or username to remove (or '0' to cancel): " sel
+    if [[ "$sel" == "0" || "$sel" == "q" || -z "$sel" ]]; then
+        exit 0
+    fi
 
     target_user=""
     if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
@@ -88,7 +94,8 @@ if [[ "$resp" == "1" ]]; then
         user_uid=$(id -u "$target_user" 2>/dev/null || echo "0")
         if (( user_uid < 1000 )) || [[ "$target_user" == "root" ]]; then
             echo -e "\n\033[1;31m[!] Security violation: Cannot delete system account '$target_user' (UID: $user_uid).\033[0m\n"
-            exit 1
+            read -r -p "⚡ Press [ENTER] to return..."
+            exit 0
         fi
 
         pkill -u "$target_user" 2>/dev/null || true

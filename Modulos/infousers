@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
+# ==============================================================================
 # Axiom VPS Manager — User Audit & Information Module
-set -euo pipefail
+# ==============================================================================
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
 if [[ ! -f "$LIB_PATH" ]]; then
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
     LIB_PATH="$(cd "$SCRIPT_DIR/.." 2>/dev/null && pwd)/lib/axiom-common.sh"
 fi
 if [[ -f "$LIB_PATH" ]]; then
@@ -13,75 +14,90 @@ if [[ -f "$LIB_PATH" ]]; then
     source "$LIB_PATH"
 fi
 
-clear
+if type axiom_require_root >/dev/null 2>&1; then
+    axiom_require_root
+elif [[ "$(id -u)" -ne 0 ]]; then
+    echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    read -r -p "⚡ Press [ENTER] to return..."
+    exit 1
+fi
 
+clear
 echo -e "\E[44;1;37m  Username         Status     Limit      Validity     \E[0m"
 echo ""
 
 database="/root/usuarios.db"
-touch "$database"
+touch "$database" 2>/dev/null || true
 
 total_users=0
 total_active_sessions=0
 
-while read -r user_line; do
-    [[ -z "$user_line" ]] && continue
-    if ! [[ "$user_line" =~ ^[a-zA-Z0-9_-]+[[:space:]]+[0-9]+ ]]; then
-        continue
-    fi
-
-    users=$(echo "$user_line" | awk '{print $1}')
-    lim=$(echo "$user_line" | awk '{print $2}')
-    [[ -z "$lim" ]] && lim="1"
-
-    if ! id "$users" >/dev/null 2>&1; then
-        continue
-    fi
-
-    total_users=$((total_users + 1))
-
-    # Connection counting safely across OpenSSH, Dropbear, and OpenVPN
-    u_ssh=$(pgrep -c -u "$users" sshd 2>/dev/null || true)
-    [[ -z "$u_ssh" ]] && u_ssh=0
-    u_drop=$(pgrep -c -u "$users" dropbear 2>/dev/null || true)
-    [[ -z "$u_drop" ]] && u_drop=0
-    u_ovp=0
-    if [[ -f /etc/openvpn/openvpn-status.log ]]; then
-        u_ovp=$(grep -E -c ",${users}," /etc/openvpn/openvpn-status.log 2>/dev/null || true)
-        [[ -z "$u_ovp" ]] && u_ovp=0
-    fi
-    u_total=$((u_ssh + u_drop + u_ovp))
-    total_active_sessions=$((total_active_sessions + u_total))
-
-    datauser=$(chage -l "$users" 2>/dev/null | grep -i "Account expires" | awk -F : '{print $2}' | xargs || echo "never")
-    if [[ "$datauser" == "never" || -z "$datauser" ]]; then
-        data="\033[1;33mNever\033[0m"
-    else
-        exp_sec=$(date -d "$datauser 23:59:59" +%s 2>/dev/null || date -d "$datauser" +%s 2>/dev/null || echo "0")
-        now_sec=$(date +%s)
-        diff_sec=$(( exp_sec - now_sec ))
-
-        if (( diff_sec <= 0 )); then
-            data="\033[1;31mExpired\033[0m"
-        else
-            # Ceiling division for accurate remaining days
-            diff_days=$(( (diff_sec + 86399) / 86400 ))
-            data="\033[1;32m${diff_days} Days\033[0m"
+if [[ -f "$database" ]]; then
+    while read -r user_line; do
+        [[ -z "$user_line" ]] && continue
+        if ! [[ "$user_line" =~ ^[a-zA-Z0-9_-]+[[:space:]]+[0-9]+ ]]; then
+            continue
         fi
-    fi
 
-    if (( u_total > 0 )); then
-        status_disp="\033[1;32mOnline \033[0m"
-    else
-        status_disp="\033[1;30mOffline\033[0m"
-    fi
+        users=$(echo "$user_line" | awk '{print $1}')
+        lim=$(echo "$user_line" | awk '{print $2}')
+        [[ -z "$lim" ]] && lim="1"
 
-    Usuario=$(printf '%-16s' "$users")
-    Limite=$(printf '%-10s' "$lim")
-    echo -e "\033[1;37m$Usuario \033[0m$status_disp \033[1;36m$Limite \033[1;32m$data\033[0m"
-    echo -e "\033[0;34m──────────────────────────────────────────────────────\033[0m"
-done < "$database"
+        if ! id "$users" >/dev/null 2>&1; then
+            continue
+        fi
+
+        total_users=$((total_users + 1))
+
+        # Connection counting safely across OpenSSH, Dropbear, and OpenVPN
+        u_ssh=$(pgrep -c -u "$users" sshd 2>/dev/null || true)
+        u_ssh=$(echo "$u_ssh" | tr -dc '0-9'); [[ -z "$u_ssh" ]] && u_ssh=0
+
+        u_drop=$(pgrep -c -u "$users" dropbear 2>/dev/null || true)
+        u_drop=$(echo "$u_drop" | tr -dc '0-9'); [[ -z "$u_drop" ]] && u_drop=0
+
+        u_ovp=0
+        if [[ -f /etc/openvpn/openvpn-status.log ]]; then
+            u_ovp=$(grep -E -c ",${users}," /etc/openvpn/openvpn-status.log 2>/dev/null || true)
+            u_ovp=$(echo "$u_ovp" | tr -dc '0-9'); [[ -z "$u_ovp" ]] && u_ovp=0
+        fi
+        u_total=$((u_ssh + u_drop + u_ovp))
+        total_active_sessions=$((total_active_sessions + u_total))
+
+        datauser=$(chage -l "$users" 2>/dev/null | grep -i "Account expires" | awk -F : '{print $2}' | xargs || echo "never")
+        if [[ "$datauser" == "never" || -z "$datauser" ]]; then
+            data="\033[1;33mNever\033[0m"
+        else
+            exp_sec=$(date -d "$datauser 23:59:59" +%s 2>/dev/null || date -d "$datauser" +%s 2>/dev/null || echo "0")
+            now_sec=$(date +%s 2>/dev/null || echo 0)
+            diff_sec=$(( exp_sec - now_sec ))
+
+            if (( diff_sec <= 0 )); then
+                data="\033[1;31mExpired\033[0m"
+            else
+                diff_days=$(( (diff_sec + 86399) / 86400 ))
+                data="\033[1;32m${diff_days} Days\033[0m"
+            fi
+        fi
+
+        if (( u_total > 0 )); then
+            status_disp="\033[1;32mOnline \033[0m"
+        else
+            status_disp="\033[1;30mOffline\033[0m"
+        fi
+
+        Usuario=$(printf '%-16s' "$users")
+        Limite=$(printf '%-10s' "$lim")
+        echo -e "\033[1;37m$Usuario \033[0m$status_disp \033[1;36m$Limite \033[1;32m$data\033[0m"
+        echo -e "\033[0;34m──────────────────────────────────────────────────────\033[0m"
+    done < "$database"
+fi
+
+if [[ $total_users -eq 0 ]]; then
+    echo -e "  \033[1;33mNo managed users registered in system.\033[0m\n"
+fi
 
 echo ""
 echo -e "\033[1;33mTotal Managed Accounts: \033[1;37m$total_users \033[1;33m| Active Connections: \033[1;32m$total_active_sessions\033[0m\n"
-read -r -p "Press Enter to return to menu..."
+read -r -p "⚡ Press [ENTER] to return to menu..."
+exit 0

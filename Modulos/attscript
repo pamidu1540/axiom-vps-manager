@@ -3,7 +3,6 @@
 # Axiom VPS Manager — Script Update Checker & Installer
 # ==============================================================================
 
-set -euo pipefail
 
 CLR_RESET='\033[0m'
 CLR_RED='\033[1;31m'

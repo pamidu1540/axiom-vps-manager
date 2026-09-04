@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — System & Port Diagnostics
-set -euo pipefail
 
 if [[ -t 0 ]]; then
     clear
@@ -24,7 +23,9 @@ echo ""
 echo -e "\033[1;31m• \033[1;32mPROCESSOR & ARCHITECTURE\033[1;31m •\033[0m\n"
 if [[ -f /proc/cpuinfo ]]; then
     modelo=$(grep "model name" /proc/cpuinfo 2>/dev/null | head -n1 | cut -d: -f2 | sed 's/^[ \t]*//' || echo "Generic CPU")
-    cpucores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || echo "1")
+    cpucores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null || true)
+    cpucores=$(echo "$cpucores" | tr -dc '0-9')
+    [[ -z "$cpucores" || "$cpucores" -eq 0 ]] && cpucores=1
     echo -e "\033[1;33mModel:\033[1;37m $modelo"
     echo -e "\033[1;33mCPU Cores:\033[1;37m $cpucores"
     echo -e "\033[1;33mArchitecture:\033[1;37m $(uname -m)"

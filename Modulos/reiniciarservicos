@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Service Restart Manager
-set -euo pipefail
 
 clear
 echo -e "\033[1;36m====================================================\033[0m"

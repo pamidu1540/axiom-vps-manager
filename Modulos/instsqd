@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Squid Proxy Modern Installer
-set -euo pipefail
 
 # Clean up any leftover legacy trusty repository files
 rm -f /etc/apt/sources.list.d/trusty_sources.list

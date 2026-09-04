@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Menu Uninstaller Invocation
-set -euo pipefail
 
 if [[ -f /opt/axiom/uninstall.sh ]]; then
     exec bash /opt/axiom/uninstall.sh

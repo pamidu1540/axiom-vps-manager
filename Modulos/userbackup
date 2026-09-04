@@ -3,7 +3,6 @@
 # Axiom VPS Manager — Secure Backup & Recovery
 # ==============================================================================
 
-set -euo pipefail
 
 BACKUP_DIR="/root/backups"
 mkdir -p -m 700 "$BACKUP_DIR" 2>/dev/null || true
@@ -37,8 +36,8 @@ case "$opt" in
         echo -e "\n\033[1;33m[*] Collecting configurations and user database...\033[0m"
         
         # Include necessary configs without exposing plaintext passwords
-        [[ -f /root/usuarios.db ]] && cp /root/usuarios.db "$TMP_DIR/"
-        [[ -d /etc/VPSManager ]] && cp -r /etc/VPSManager "$TMP_DIR/"
+        [[ -f /root/usuarios.db ]] && cp /root/usuarios.db "$TMP_DIR/" 2>/dev/null || true
+        [[ -d /etc/VPSManager ]] && cp -r /etc/VPSManager "$TMP_DIR/" 2>/dev/null || true
         [[ -d /etc/wireguard ]] && cp -r /etc/wireguard "$TMP_DIR/" 2>/dev/null || true
         [[ -d /etc/axiom ]] && cp -r /etc/axiom "$TMP_DIR/" 2>/dev/null || true
         [[ -d /opt/axiom/config ]] && cp -r /opt/axiom/config "$TMP_DIR/" 2>/dev/null || true

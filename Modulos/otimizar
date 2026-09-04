@@ -4,7 +4,6 @@
 # Multi-Tier Memory, Journal, Package Cache, and TCP Kernel Tuning
 # ==============================================================================
 
-set -euo pipefail
 
 export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
 

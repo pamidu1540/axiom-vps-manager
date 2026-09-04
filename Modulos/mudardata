@@ -3,7 +3,6 @@
 # Axiom VPS Manager — Change Account Expiry Date Module
 # ==============================================================================
 
-set -euo pipefail
 
 # Source common library
 LIB_PATH="/etc/axiom/lib/axiom-common.sh"
@@ -20,19 +19,20 @@ if type axiom_require_root >/dev/null 2>&1; then
     axiom_require_root
 elif [[ "$(id -u)" -ne 0 ]]; then
     echo -e "\033[1;31m[!] Error: Axiom operations require root privileges.\033[0m" >&2
+    read -r -p "⚡ Press [ENTER] to return..."
     exit 1
 fi
 
 database="/root/usuarios.db"
-touch "$database"
+touch "$database" 2>/dev/null || true
 
 clear
 tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Modify Account Expiry  " ; tput sgr0
 echo ""
 
-mapfile -t users_list < <(awk '{print $1}' "$database" | sort -u)
+mapfile -t users_list < <(awk '{print $1}' "$database" 2>/dev/null | sort -u)
 if [[ ${#users_list[@]} -eq 0 ]]; then
-    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd | sort -u)
+    mapfile -t users_list < <(awk -F: '$3>=1000 && $1!="nobody" {print $1}' /etc/passwd 2>/dev/null | sort -u)
 fi
 
 if [[ ${#users_list[@]} -eq 0 ]]; then
@@ -56,7 +56,10 @@ for i in "${!users_list[@]}"; do
 done
 echo ""
 
-read -r -p "Enter user number or username: " sel
+read -r -p "Enter user number or username (or '0' to cancel): " sel
+if [[ "$sel" == "0" || "$sel" == "q" || -z "$sel" ]]; then
+    exit 0
+fi
 target_user=""
 if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel >= 1 && sel <= ${#users_list[@]} )); then
     target_user="${users_list[$((sel - 1))]}"

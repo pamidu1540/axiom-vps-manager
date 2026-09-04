@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — Connection Limiter Daemon
-set -euo pipefail
 
 database="/root/usuarios.db"
 trial_database="/etc/VPSManager/trial_users.db"

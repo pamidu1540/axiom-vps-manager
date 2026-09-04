@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-set -euo pipefail
+# ==============================================================================
+# Axiom VPS Manager — Add Host to Squid Proxy
+# ==============================================================================
 
 payload=""
 if [[ -d "/etc/squid" ]]; then
@@ -10,52 +12,56 @@ elif [[ -d "/etc/squid3" ]]; then
     touch "$payload" 2>/dev/null || true
 fi
 
+clear
 tput setaf 7 ; tput setab 4 ; tput bold ; printf '%35s%s%-10s\n' "  Axiom - Add Host to Squid Proxy  " ; tput sgr0
 
 if [[ -z "$payload" ]]; then
     echo -e "\n\033[1;31m[!] Squid is not installed (/etc/squid/ or /etc/squid3/ missing).\033[0m\n"
     read -r -p "Press Enter to return..."
-    exit 1
+    exit 0
 fi
 
 echo -e "\n\033[1;32mCurrent domains in $payload:\033[0m"
-cat "$payload"
+cat "$payload" 2>/dev/null || true
 echo ""
 
-read -r -p "Enter the domain to whitelist (e.g. .example.com): " host
-if [[ -z "$host" ]]; then
-    echo -e "\n\033[1;31m[!] Empty domain provided.\033[0m\n"
-    exit 1
+read -r -p "Enter the domain to whitelist (or '0' to cancel): " host
+host=$(echo "$host" | tr -d '[:space:]')
+
+if [[ -z "$host" || "$host" == "0" || "$host" == "q" ]]; then
+    echo -e "\n\033[1;33m[*] Operation cancelled.\033[0m\n"
+    read -r -p "Press Enter to return..."
+    exit 0
 fi
 
+# Auto-prefix dot if missing for Squid regex / dstdomain matching
 if [[ "$host" != .* ]]; then
-    echo -e "\n\033[1;33m[!] Domain must start with a dot (e.g. .example.com)\033[0m\n"
-    exit 1
+    host=".$host"
 fi
 
-if grep -Fxq "$host" "$payload"; then
-    echo -e "\n\033[1;33m[!] Domain $host is already in $payload\033[0m\n"
+if grep -Fxq "$host" "$payload" 2>/dev/null; then
+    echo -e "\n\033[1;33m[!] Domain '$host' is already in $payload\033[0m\n"
+    read -r -p "Press Enter to return..."
     exit 0
 fi
 
 echo "$host" >> "$payload"
-tmp_file=$(mktemp)
-grep -v "^$" "$payload" > "$tmp_file"
-chmod --reference="$payload" "$tmp_file" 2>/dev/null || chmod 644 "$tmp_file"
-chown --reference="$payload" "$tmp_file" 2>/dev/null || true
-mv "$tmp_file" "$payload"
+tmp_file=$(mktemp 2>/dev/null || echo "/tmp/payload.tmp")
+grep -v "^$" "$payload" > "$tmp_file" 2>/dev/null || true
+mv "$tmp_file" "$payload" 2>/dev/null || true
 chmod 644 "$payload" 2>/dev/null || true
 
-# Corrected service reload check
+# Reload squid service safely
 if systemctl is-active --quiet squid 2>/dev/null; then
-    systemctl reload squid
+    systemctl reload squid 2>/dev/null || true
 elif systemctl is-active --quiet squid3 2>/dev/null; then
-    systemctl reload squid3
+    systemctl reload squid3 2>/dev/null || true
 elif [[ -f "/etc/init.d/squid" ]]; then
-    service squid reload
+    service squid reload 2>/dev/null || true
 elif [[ -f "/etc/init.d/squid3" ]]; then
-    service squid3 reload
+    service squid3 reload 2>/dev/null || true
 fi
 
-echo -e "\n\033[1;32m[✓] Domain $host added and proxy reloaded.\033[0m\n"
+echo -e "\n\033[1;32m[✓] Domain '$host' added and proxy reloaded.\033[0m\n"
 read -r -p "⚡ Press [ENTER] to return..."
+exit 0

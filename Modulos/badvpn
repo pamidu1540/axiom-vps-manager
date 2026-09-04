@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — BadVPN UDP Gateway Manager
-set -euo pipefail
 
 EXPECTED_SHA256="48832133b7bdff20261bac41713e3ea231404b85764c1143d2095311867fb43f"
 
@@ -97,7 +96,8 @@ menu_badvpn() {
     
     if is_running; then
         local active_ports
-        active_ports=$(ss -ulpn 2>/dev/null | grep 'badvpn-ud' | awk '{print $5}' | cut -d: -f2 | xargs || netstat -nplt 2>/dev/null | grep 'badvpn-ud' | awk '{print $4}' | cut -d: -f2 | xargs || echo "7300")
+        active_ports=$(ss -ulpn 2>/dev/null | grep 'badvpn-ud' | awk '{print $5}' | cut -d: -f2 | xargs 2>/dev/null || true)
+        [[ -z "$active_ports" ]] && active_ports=$(netstat -nulp 2>/dev/null | grep 'badvpn-ud' | awk '{print $4}' | cut -d: -f2 | xargs 2>/dev/null || true)
         echo -e "\033[1;33mStatus:\033[0m \033[1;32mACTIVE\033[0m  \033[1;33mPort(s):\033[0m \033[1;37m${active_ports:-7300}\033[0m\n"
         echo -e "\033[1;31m[1]\033[0m Stop BadVPN"
         echo -e "\033[1;32m[2]\033[0m Change Port"
@@ -116,7 +116,7 @@ menu_badvpn() {
             else
                 start_badvpn 7300
             fi
-            sleep 2
+            sleep 1.5
             ;;
         2)
             read -r -p "Enter UDP port to use: " custom_port
@@ -126,9 +126,9 @@ menu_badvpn() {
             else
                 echo -e "\033[1;31m[!] Invalid port number.\033[0m"
             fi
-            sleep 2
+            sleep 1.5
             ;;
-        0)
+        0|00|q|exit)
             exit 0
             ;;
         *)

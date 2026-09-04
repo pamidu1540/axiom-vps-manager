@@ -79,6 +79,7 @@ PACKAGES=(
     "openssh-server"
     "screen"
     "git"
+    "nload"
 )
 
 for pkg in "${PACKAGES[@]}"; do

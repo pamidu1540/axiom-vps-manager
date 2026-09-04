@@ -44,16 +44,14 @@ fun_botOnOff() {
             }
             cd /etc/VPSManager
             screen -dmS bot_plus ./bot "$tokenbot" "$iduser" >/dev/null 2>&1
-            [[ $(grep -wc "bot_plus" /etc/autostart 2>/dev/null || echo 0) = '0' ]] && {
-                echo -e "ps x | grep 'bot_plus' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_plus ./bot $tokenbot $iduser && cd $HOME" >>/etc/autostart
-            } || {
-                sed -i '/bot_plus/d' /etc/autostart 2>/dev/null || true
-                echo -e "ps x | grep 'bot_plus' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_plus ./bot $tokenbot $iduser && cd $HOME" >>/etc/autostart
-            }
-            [[ $(crontab -l 2>/dev/null | grep -c "verifbot" || echo 0) = '0' ]] && (
-                crontab -l 2>/dev/null
-                echo "@daily /usr/local/bin/verifbot"
-            ) | crontab -
+            sed -i '/bot_plus/d' /etc/autostart 2>/dev/null || true
+            echo -e "ps x | grep 'bot_plus' | grep -v 'grep' || cd /etc/VPSManager && sudo screen -dmS bot_plus ./bot $tokenbot $iduser && cd $HOME" >>/etc/autostart
+            if ! crontab -l 2>/dev/null | grep -q "verifbot"; then
+                (
+                    crontab -l 2>/dev/null || true
+                    echo "@daily /usr/local/bin/verifbot"
+                ) | crontab - 2>/dev/null || true
+            fi
             cd "$HOME"
         }
         fun_bar 'fun_bot1'

@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # Axiom VPS Manager — SSH & Dropbear Banner Manager
-set -euo pipefail
 
 local="/etc/bannerssh"
 touch "$local"
@@ -47,7 +46,8 @@ if [[ "$resp" == "1" ]]; then
         read -r -p "Enter the banner message text: " msg1
         if [[ -z "$msg1" ]]; then
             echo -e "\n\033[1;31m[!] Empty message. Operation cancelled.\033[0m"
-            exit 1
+            read -r -p "⚡ Press [ENTER] to return..."
+            exit 0
         fi
 
         echo -e "\n[1] Small  [2] Medium  [3] Large  [4] Extra Large"
