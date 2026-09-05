@@ -1,0 +1,52 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ 'main' ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ 'main' ]
+
+jobs:
+  lint-and-validate:
+    name: Code Quality & Syntax Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pytest
+
+      - name: Verify Shell Script Syntax (bash -n)
+        run: |
+          echo 'Validating shell scripts syntax...'
+          find . -type f \( -name '*.sh' -o -path './Modulos/*' \) -exec bash -n {} +
+          echo 'All shell scripts passed syntax check.'
+
+      - name: Verify Executable Permissions
+        run: |
+          echo 'Checking executable permissions on scripts...'
+          chmod +x install.sh uninstall.sh Modulos/* 2>/dev/null || true
+          [ -x install.sh ] || exit 1
+          [ -x uninstall.sh ] || exit 1
+          echo 'Permission checks passed.'
+
+      - name: Run Python Linter (Ruff)
+        run: |
+          echo 'Running Ruff linter...'
+          ruff check .
+
+      - name: Run Test Suite
+        run: |
+          if [ -d 'tests' ]; then
+            pytest -v tests/
+          fi

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Clean Uninstaller
-# Version: 1.0.1
+# Version: 1.0.2
 # License: GPL-3.0
 # ==============================================================================
 
@@ -115,7 +115,10 @@ echo -e "${CLR_BLUE}[*] Cleaning shell login profiles...${CLR_RESET}"
 sed -i '/menu;/d' /etc/profile 2>/dev/null || true
 sed -i '/axiom/d' /etc/profile 2>/dev/null || true
 sed -i '/autostart/d' /etc/profile 2>/dev/null || true
+sed -i '/axiom\/autolaunch/d' /root/.bashrc 2>/dev/null || true
+sed -i '/axiom/d' /root/.bashrc 2>/dev/null || true
 rm -f /etc/profile.d/axiom.sh 2>/dev/null || true
+rm -f /etc/axiom/autolaunch 2>/dev/null || true
 
 # 8. Uninstall Python package if installed
 if command -v pip3 >/dev/null 2>&1; then

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Auto-Execution Toggle Module
-# Automatically launches Axiom dashboard on root SSH login.
+# Automatically launches Axiom dashboard on root SSH / console login.
 # ==============================================================================
-
 
 CLR_RESET='\033[0m'
 CLR_RED='\033[1;31m'
@@ -17,10 +16,16 @@ echo -e "${CLR_CYAN}====================================================${CLR_RE
 echo -e "${CLR_YELLOW}${CLR_BOLD}       ⚡ Axiom Auto-Execution on Login Toggle ⚡      ${CLR_RESET}"
 echo -e "${CLR_CYAN}====================================================${CLR_RESET}\n"
 
-if grep -q "axiom;" /etc/profile 2>/dev/null || grep -q "menu;" /etc/profile 2>/dev/null; then
-    echo -e "Current Status: ${CLR_GREEN}${CLR_BOLD}● ACTIVE${CLR_RESET} (Axiom runs on SSH login)\n"
+is_active=0
+if [[ -f /etc/axiom/autolaunch ]] || grep -q "axiom;" /etc/profile 2>/dev/null || grep -q "menu;" /etc/profile 2>/dev/null; then
+    is_active=1
+fi
+
+if [[ $is_active -eq 1 ]]; then
+    echo -e "Current Status: ${CLR_GREEN}${CLR_BOLD}● ACTIVE${CLR_RESET} (Axiom directly opens on VM boot & login)\n"
     read -r -p "Do you want to DISABLE auto-execution? [y/N]: " resp
     if [[ "$resp" =~ ^[yY]$ ]]; then
+        rm -f /etc/axiom/autolaunch 2>/dev/null || true
         sed -i '/menu;/d' /etc/profile 2>/dev/null || true
         sed -i '/axiom;/d' /etc/profile 2>/dev/null || true
         echo -e "\n${CLR_RED}[✓] Auto-execution on login DISABLED.${CLR_RESET}\n"
@@ -28,12 +33,27 @@ if grep -q "axiom;" /etc/profile 2>/dev/null || grep -q "menu;" /etc/profile 2>/
         echo -e "\n${CLR_YELLOW}No changes made.${CLR_RESET}\n"
     fi
 else
-    echo -e "Current Status: ${CLR_RED}${CLR_BOLD}○ INACTIVE${CLR_RESET}\n"
+    echo -e "Current Status: ${CLR_RED}${CLR_BOLD}○ INACTIVE${CLR_RESET} (System default terminal prompt shown)\n"
     read -r -p "Do you want to ENABLE auto-execution on login? [y/N]: " resp
     if [[ "$resp" =~ ^[yY]$ ]]; then
+        mkdir -p /etc/axiom 2>/dev/null || true
+        touch /etc/axiom/autolaunch 2>/dev/null || true
         sed -i '/menu;/d' /etc/profile 2>/dev/null || true
         sed -i '/axiom;/d' /etc/profile 2>/dev/null || true
-        echo "axiom;" >> /etc/profile
+        # Ensure profile.d hook exists
+        if [[ ! -f /etc/profile.d/axiom.sh ]]; then
+            cat << 'EOF' > /etc/profile.d/axiom.sh
+export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
+export PYTHONPATH="/opt/axiom/src:${PYTHONPATH:-}"
+
+if [[ -t 0 && "$-" == *i* && -z "${SSH_ORIGINAL_COMMAND:-}" && -f /etc/axiom/autolaunch ]]; then
+    if [[ "$(id -u)" -eq 0 && -x /usr/local/bin/axiom ]]; then
+        /usr/local/bin/axiom
+    fi
+fi
+EOF
+            chmod 644 /etc/profile.d/axiom.sh 2>/dev/null || true
+        fi
         echo -e "\n${CLR_GREEN}[✓] Auto-execution on login ENABLED.${CLR_RESET}\n"
     else
         echo -e "\n${CLR_YELLOW}No changes made.${CLR_RESET}\n"

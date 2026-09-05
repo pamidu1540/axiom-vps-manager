@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Modern, Secure & High-Performance Installer
-# Version: 1.0.0
+# Version: 1.0.2
 # License: GPL-3.0
 # Repository: https://github.com/pamidu1540/axiom-vps-manager
 # ==============================================================================
 
 set -euo pipefail
 
-AXIOM_VERSION="1.0.1"
+AXIOM_VERSION="1.0.2"
 REPO_OWNER="pamidu1540"
 REPO_NAME="axiom-vps-manager"
 REPO_BRANCH="main"
@@ -274,12 +274,41 @@ if [[ -f "$INSTALL_DIR/uninstall.sh" ]]; then
     ln -sf "$INSTALL_DIR/uninstall.sh" /usr/bin/axiom-uninstall 2>/dev/null || true
 fi
 
-# 10. Global PATH Profile
+# 10. Global PATH Profile & Boot Auto-Launch Hook
 cat << 'EOF' > /etc/profile.d/axiom.sh
 export PATH="/opt/axiom/Modulos:/usr/local/bin:/usr/bin:/bin:$PATH"
 export PYTHONPATH="/opt/axiom/src:${PYTHONPATH:-}"
+
+# Auto-launch Axiom Menu on interactive root login when enabled
+if [[ -t 0 && "$-" == *i* && -z "${SSH_ORIGINAL_COMMAND:-}" && -f /etc/axiom/autolaunch ]]; then
+    if [[ "$(id -u)" -eq 0 && -x /usr/local/bin/axiom ]]; then
+        /usr/local/bin/axiom
+    fi
+fi
 EOF
 chmod 644 /etc/profile.d/axiom.sh 2>/dev/null || true
+
+# Also hook /root/.bashrc for interactive VM consoles / subshells
+if [[ -f /root/.bashrc ]] && ! grep -q "axiom/autolaunch" /root/.bashrc 2>/dev/null; then
+    cat << 'EOF' >> /root/.bashrc
+
+# Axiom VPS Manager — VM Console Auto-Launch
+if [[ -t 0 && "$-" == *i* && -z "${SSH_ORIGINAL_COMMAND:-}" && -f /etc/axiom/autolaunch ]]; then
+    if [[ "$(id -u)" -eq 0 && -x /usr/local/bin/axiom ]]; then
+        /usr/local/bin/axiom
+    fi
+fi
+EOF
+fi
+
+# Enable auto-launch by default on fresh install
+touch /etc/axiom/autolaunch 2>/dev/null || true
+
+# Configure clean Axiom login banner for VM / SSH login
+cat << 'EOF' > /etc/issue.net
+⚡ Axiom VPS Manager Node (Authorized Access Only) ⚡
+EOF
+cp -f /etc/issue.net /etc/motd 2>/dev/null || true
 
 # 11. Version metadata files
 if [[ -f "$INSTALL_DIR/Install/versao" ]]; then

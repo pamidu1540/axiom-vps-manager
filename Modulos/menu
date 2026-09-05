@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Modern Interactive Terminal Dashboard & CLI Dispatcher
-# Version: 1.0.0
+# Version: 1.0.2
 # License: GPL-3.0
 # Repository: https://github.com/pamidu1540/axiom-vps-manager
 # ==============================================================================
@@ -104,28 +104,30 @@ limit_ssh() {
     fi
 }
 
-# Auto-execute toggle (runs axiom on login)
+# Auto-execute toggle (runs axiom on VM boot / login)
 autoexec() {
-    if grep -q "axiom;" /etc/profile 2>/dev/null || grep -q "menu;" /etc/profile 2>/dev/null; then
+    if [[ -f /etc/axiom/autolaunch ]] || grep -q "axiom;" /etc/profile 2>/dev/null || grep -q "menu;" /etc/profile 2>/dev/null; then
         clear
         echo -e "${CLR_YELLOW}⚡ Disabling Axiom Auto-Execution on Login...${CLR_RESET}\n"
         offautmenu() {
+            rm -f /etc/axiom/autolaunch 2>/dev/null || true
             sed -i '/menu;/d' /etc/profile 2>/dev/null || true
             sed -i '/axiom;/d' /etc/profile 2>/dev/null || true
         }
         fun_bar 'offautmenu'
-        echo -e "\n${CLR_RED}[✓] Auto-Execution DISABLED.${CLR_RESET}"
+        echo -e "\n${CLR_RED}[✓] Auto-Execution DISABLED (Standard shell on login).${CLR_RESET}"
         sleep 1.5
     else
         clear
         echo -e "${CLR_GREEN}⚡ Activating Axiom Auto-Execution on Login...${CLR_RESET}\n"
         autmenu() {
+            mkdir -p /etc/axiom 2>/dev/null || true
+            touch /etc/axiom/autolaunch 2>/dev/null || true
             sed -i '/menu;/d' /etc/profile 2>/dev/null || true
             sed -i '/axiom;/d' /etc/profile 2>/dev/null || true
-            echo "axiom;" >> /etc/profile
         }
         fun_bar 'autmenu'
-        echo -e "\n${CLR_GREEN}[✓] Auto-Execution ENABLED.${CLR_RESET}"
+        echo -e "\n${CLR_GREEN}[✓] Auto-Execution ENABLED (Axiom directly opens on VM boot/login).${CLR_RESET}"
         sleep 1.5
     fi
 }
@@ -141,7 +143,7 @@ menu2() {
 
         local stsf autm stsbot system _ons _expuser _onop _drp _ondrp _onli _ram _usor _usop _core _system _hora _tuser
         [[ -e /etc/axiom/torrent_blocked || -e /etc/Plus-torrent ]] && stsf="${CLR_GREEN}● ON ${CLR_RESET}" || stsf="${CLR_RED}○ OFF${CLR_RESET}"
-        if grep -q -E "axiom;|menu;" /etc/profile 2>/dev/null; then
+        if [[ -f /etc/axiom/autolaunch ]] || grep -q -E "axiom;|menu;" /etc/profile 2>/dev/null; then
             autm="${CLR_GREEN}● ON ${CLR_RESET}"
         else
             autm="${CLR_RED}○ OFF${CLR_RESET}"
@@ -185,7 +187,7 @@ menu2() {
 
         clear
         echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
-        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER — ADVANCED OPERATIONS ⚡${CLR_RESET}              ${CLR_CYAN}│${CLR_RESET}"
+        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER — ADVANCED OPERATIONS ⚡${CLR_RESET}       ${CLR_CYAN}v1.0.2 │${CLR_RESET}"
         echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}OS:${CLR_RESET} $_system ${CLR_WHITE}RAM:${CLR_RESET} $_ram (${_usor}) ${CLR_CYAN}│${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}CPU:${CLR_RESET} $_core Core(s) (${_usop})  ${CLR_WHITE}Uptime / Time:${CLR_RESET} $_hora         ${CLR_CYAN}│${CLR_RESET}"
@@ -270,7 +272,7 @@ menu_principal() {
 
         clear
         echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
-        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER ⚡${CLR_RESET}                             ${CLR_CYAN}v1.0.1 │${CLR_RESET}"
+        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER ⚡${CLR_RESET}                             ${CLR_CYAN}v1.0.2 │${CLR_RESET}"
         echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}OS:${CLR_RESET} $_system ${CLR_WHITE}RAM:${CLR_RESET} $_ram (${_usor}) ${CLR_CYAN}│${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}CPU:${CLR_RESET} $_core Core(s) (${_usop})  ${CLR_WHITE}Uptime / Time:${CLR_RESET} $_hora         ${CLR_CYAN}│${CLR_RESET}"

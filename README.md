@@ -3,7 +3,7 @@
 # ⚡ Axiom VPS Manager ⚡
 **Modern, Secure, High-Performance VPS Tunneling & Management Platform**
 
-[![Version](https://img.shields.io/badge/version-v1.0.1-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.1)
+[![Version](https://img.shields.io/badge/version-v1.0.2-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.2)
 [![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=for-the-badge)](LICENSE)
 [![Bash](https://img.shields.io/badge/Bash-5.0%2B-black.svg?style=for-the-badge&logo=gnu-bash)](https://gnu.org/software/bash)
 [![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
