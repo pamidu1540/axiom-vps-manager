@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Modern Interactive Terminal Dashboard & CLI Dispatcher
-# Version: 1.0.2
+# Version: 1.0.3
 # License: GPL-3.0
 # Repository: https://github.com/pamidu1540/axiom-vps-manager
 # ==============================================================================
@@ -187,7 +187,7 @@ menu2() {
 
         clear
         echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
-        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER — ADVANCED OPERATIONS ⚡${CLR_RESET}       ${CLR_CYAN}v1.0.2 │${CLR_RESET}"
+        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER — ADVANCED OPERATIONS ⚡${CLR_RESET}       ${CLR_CYAN}v1.0.3 │${CLR_RESET}"
         echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}OS:${CLR_RESET} $_system ${CLR_WHITE}RAM:${CLR_RESET} $_ram (${_usor}) ${CLR_CYAN}│${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}CPU:${CLR_RESET} $_core Core(s) (${_usop})  ${CLR_WHITE}Uptime / Time:${CLR_RESET} $_hora         ${CLR_CYAN}│${CLR_RESET}"
@@ -208,13 +208,13 @@ menu2() {
             20) clear; addhost ;;
             21) clear; delhost ;;
             22) clear; reiniciarsistema ;;
-            23) clear; reiniciarservicos; sleep 2 ;;
+            23) clear; reiniciarservicos ;;
             24) blockt ;;
             25) botssh ;;
-            26) clear; senharoot; sleep 2 ;;
+            26) clear; senharoot ;;
             27) autoexec ;;
             28) attscript ;;
-            29) clear; delscript; exit 0 ;;
+            29) clear; delscript ;;
             30|back|b) return 0 ;;
             0|00|q|exit) echo -e "\n${CLR_GREEN}Goodbye!${CLR_RESET}\n"; exit 0 ;;
             *) echo -e "\n${CLR_RED}[!] Invalid option.${CLR_RESET}"; sleep 1.5 ;;
@@ -272,7 +272,7 @@ menu_principal() {
 
         clear
         echo -e "${CLR_CYAN}╭─────────────────────────────────────────────────────────────╮${CLR_RESET}"
-        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER ⚡${CLR_RESET}                             ${CLR_CYAN}v1.0.2 │${CLR_RESET}"
+        echo -e "${CLR_CYAN}│${CLR_RESET}   ${CLR_YELLOW}${CLR_BOLD}⚡ AXIOM VPS MANAGER ⚡${CLR_RESET}                             ${CLR_CYAN}v1.0.3 │${CLR_RESET}"
         echo -e "${CLR_CYAN}├─────────────────────────────────────────────────────────────┤${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}OS:${CLR_RESET} $_system ${CLR_WHITE}RAM:${CLR_RESET} $_ram (${_usor}) ${CLR_CYAN}│${CLR_RESET}"
         echo -e "${CLR_CYAN}│${CLR_RESET}  ${CLR_WHITE}CPU:${CLR_RESET} $_core Core(s) (${_usop})  ${CLR_WHITE}Uptime / Time:${CLR_RESET} $_hora         ${CLR_CYAN}│${CLR_RESET}"

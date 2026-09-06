@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Modern, Secure & High-Performance Installer
-# Version: 1.0.2
+# Version: 1.0.3
 # License: GPL-3.0
 # Repository: https://github.com/pamidu1540/axiom-vps-manager
 # ==============================================================================
 
 set -euo pipefail
 
-AXIOM_VERSION="1.0.2"
+AXIOM_VERSION="1.0.3"
 REPO_OWNER="pamidu1540"
 REPO_NAME="axiom-vps-manager"
 REPO_BRANCH="main"

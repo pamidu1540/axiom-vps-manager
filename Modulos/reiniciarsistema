@@ -13,7 +13,7 @@ case "$confirm" in
         shutdown -r now 2>/dev/null || reboot 2>/dev/null || systemctl reboot 2>/dev/null || true
         ;;
     *)
-        echo -e "\n\033[1;32m◇ Reboot cancelled.\033[0m"
-        sleep 1
+        echo -e "\n\033[1;32m◇ Reboot cancelled.\033[0m\n"
+        read -r -p "Press Enter to return to menu..."
         ;;
 esac

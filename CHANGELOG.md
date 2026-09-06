@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [1.0.3] - 2026-09-06
+
+### 🛡️ Fixed & Hardened
+- **Uninstaller Cancellation Trap Resolved**:
+  - In `Modulos/menu` Option 29 (`delscript`), eliminated the trailing `exit 0` call that prematurely closed the user's interactive dashboard session when uninstallation was cancelled.
+  - Added an interactive acknowledgment prompt (`Press Enter to return to menu...`) in `uninstall.sh` upon uninstallation cancellation.
+- **Sluggish UI Menu Delays Eliminated**:
+  - Removed redundant `sleep 2` delays in `Modulos/menu` after `reiniciarservicos` (Option 23) and `senharoot` (Option 26), preventing artificial UI stalls since both modules already provide interactive completion pauses.
+- **Server Reboot Confirmation Flow Polished**:
+  - In `Modulos/reiniciarsistema`, replaced the 1-second timer on cancellation with an interactive prompt, preventing abrupt screen clearing and giving the administrator clear feedback.
+- **Package & Metadata Version Alignment**:
+  - Synchronized version `1.0.3` across `pyproject.toml`, `Install/versao`, `Sistema/versao`, `install.sh`, `uninstall.sh`, `Modulos/menu`, and `README.md`.
+
+---
+
 ## [1.0.2] - 2026-09-05
 
 ### 🚀 Added

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
 # Axiom VPS Manager — Clean Uninstaller
-# Version: 1.0.2
+# Version: 1.0.3
 # License: GPL-3.0
 # ==============================================================================
 
@@ -43,6 +43,7 @@ if [[ $AUTO_CONFIRM -eq 0 ]]; then
     read -r -p "Are you sure you want to proceed with uninstallation? [y/N]: " confirm
     if [[ ! "$confirm" =~ ^[yY]$ ]]; then
         echo -e "\n${CLR_GREEN}[✓] Uninstallation cancelled. No changes were made.${CLR_RESET}\n"
+        read -r -p "Press Enter to return to menu..."
         exit 0
     fi
 
