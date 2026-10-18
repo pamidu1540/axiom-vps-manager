@@ -12,7 +12,7 @@ class SecurityScanner:
     @staticmethod
     def audit_system() -> dict[str, Any]:
         findings = []
-        status = "PASSED"
+        status = "NO_FINDINGS"
 
         # 1. Check for plaintext passwords on disk
         if os.path.exists("/etc/VPSManager/senha") and os.listdir("/etc/VPSManager/senha"):
@@ -73,9 +73,22 @@ class SecurityScanner:
         except Exception:
             pass
 
+        if nft_status != "ACTIVE":
+            findings.append(
+                {
+                    "severity": "MEDIUM",
+                    "title": "Axiom firewall table not detected",
+                    "detail": "The Axiom nftables table is absent or could not be inspected. Other firewall tools may be in use.",
+                }
+            )
+        if any(f["severity"] == "CRITICAL" for f in findings):
+            status = "FAILED"
+        elif findings:
+            status = "WARNING"
         return {
             "overall_status": status,
             "findings_count": len(findings),
             "findings": findings,
             "firewall_status": nft_status,
+            "scope": "Limited local configuration checks; not a vulnerability assessment or security guarantee",
         }

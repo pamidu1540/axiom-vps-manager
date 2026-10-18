@@ -1,3 +1,14 @@
+## 1.0.4 — 2026-10-15
+
+- Replace shared API credentials with environment-based authentication; require an administrator for every Telegram management action and private chats for credentials.
+- Connect a read-only web dashboard to real authenticated API responses; remove simulated metrics, account creation and security scores.
+- Validate account/password inputs, check password command results, roll back failed provisioning, protect unmanaged/system accounts, serialize Python account changes and enforce private database writes.
+- Remove mock WireGuard credentials and fabricated Xray clients; require actual server details and explain manual provisioning.
+- Preserve archive paths, create private archives before writing data, prevent timestamp collisions and reject unsafe restore paths/links. Clarify that archives are not encrypted.
+- Replace the installer with a private Python environment and explicit service setup; preserve SSH, system commands and login profiles. Narrow uninstall to owned files and preserve data.
+- Add expiry units, package discovery/assets, regression checks and CI. Remove generated package metadata from version control.
+- Rewrite documentation to distinguish implemented behavior from experimental helpers and legacy scripts.
+
 # 📋 Changelog
 
 All notable changes to the **Axiom VPS Manager** project will be documented in this file.

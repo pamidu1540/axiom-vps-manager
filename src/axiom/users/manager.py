@@ -11,10 +11,30 @@ import secrets
 import string
 import subprocess
 import tempfile
+import time
+from functools import wraps
 
 logger = logging.getLogger("AxiomUserManager")
 USER_DB_PATH = "/root/usuarios.db"
 TRIAL_DB_PATH = "/etc/VPSManager/trial_users.db"
+TRIAL_CLEANUP_DIR = "/etc/VPSManager/userteste"
+
+
+def account_transaction(method):
+    """Serialize Python account mutations across CLI, API and bot processes on Linux."""
+
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        import fcntl
+
+        lock_path = self.db_path + ".lock"
+        os.makedirs(os.path.dirname(os.path.abspath(lock_path)), exist_ok=True)
+        fd = os.open(lock_path, os.O_CREAT | os.O_RDWR, 0o600)
+        with os.fdopen(fd, "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            return method(self, *args, **kwargs)
+
+    return wrapped
 
 
 class UserManager:
@@ -32,23 +52,20 @@ class UserManager:
         target_dir = os.path.dirname(os.path.abspath(target_path)) or "."
         os.makedirs(target_dir, exist_ok=True)
         fd, tmp_path = tempfile.mkstemp(prefix=os.path.basename(target_path) + ".", dir=target_dir)
-        with os.fdopen(fd, "w", encoding="utf-8") as f:
-            f.write(content)
-        if os.name != "nt":
-            try:
-                os.chmod(tmp_path, 0o644)
-            except Exception:
-                pass
-        for attempt in range(5):
-            try:
-                os.replace(tmp_path, target_path)
-                break
-            except PermissionError:
-                if attempt == 4:
-                    raise
-                import time
-
-                time.sleep(0.02)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                f.write(content)
+            for attempt in range(5):
+                try:
+                    os.replace(tmp_path, target_path)
+                    break
+                except PermissionError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(0.02)
+        finally:
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     def list_users(self) -> list[dict[str, str]]:
         """Returns a list of all active users with their connection limits."""
@@ -113,6 +130,7 @@ class UserManager:
                 capture_output=True,
                 text=True,
                 check=False,
+                env={**os.environ, "LC_ALL": "C"},
             )
             if res.returncode == 0:
                 for line in res.stdout.splitlines():
@@ -130,21 +148,43 @@ class UserManager:
             "expiry_date": expiry_date,
         }
 
+    @staticmethod
+    def _validate_username(username: str) -> None:
+        if not re.fullmatch(r"[a-z_][a-z0-9_-]{2,31}", username):
+            raise ValueError(
+                "Username must start with a lowercase letter or underscore and contain 3-32 lowercase letters, digits, dashes or underscores"
+            )
+
+    @staticmethod
+    def _validate_password(password: str) -> None:
+        if len(password) < 8 or any(c in password for c in "\r\n:\x00"):
+            raise ValueError("Password must contain at least 8 characters and no colon, newline or NUL")
+
+    @staticmethod
+    def _set_password(username: str, password: str) -> None:
+        result = subprocess.run(["chpasswd"], input=f"{username}:{password}\n", text=True, capture_output=True)
+        if result.returncode:
+            # chpasswd stderr must never expose a credential in an exception/log.
+            raise RuntimeError("System password update failed")
+
+    def _require_managed(self, username: str) -> None:
+        self._validate_username(username)
+        self._check_system_user_protection(username)
+        if not any(user["username"] == username for user in self.list_users()):
+            raise PermissionError("Account is not managed by Axiom")
+
+    @account_transaction
     def create_user(self, username: str, password: str | None = None, days: int = 30, limit: int = 1) -> dict[str, str]:
         """Creates a system user with nologin shell and an expiration date."""
-        if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(
-                f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore."
-            )
-        if days < 1:
-            raise ValueError("Validity days must be a positive integer.")
+        self._validate_username(username)
+        if not 1 <= days <= 36500:
+            raise ValueError("Validity days must be between 1 and 36500.")
         if limit < 1 or limit > 999:
             raise ValueError("Connection limit must be between 1 and 999.")
 
         if not password:
             password = self.generate_secure_password()
-        elif len(password) < 8:
-            raise ValueError("Password must be at least 8 characters long.")
+        self._validate_password(password)
 
         expiry_date = (datetime.date.today() + datetime.timedelta(days=days)).strftime("%Y-%m-%d")
 
@@ -153,13 +193,12 @@ class UserManager:
         subprocess.run(cmd_useradd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Set password using chpasswd (securely passing via stdin)
-        p = subprocess.Popen(
-            ["chpasswd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        p.communicate(input=f"{username}:{password}")
-
-        # Update user database atomically
-        self._set_user_limit(username, limit)
+        try:
+            self._set_password(username, password)
+            self._set_user_limit(username, limit)
+        except Exception:
+            subprocess.run(["userdel", "-f", username], check=False, capture_output=True)
+            raise
 
         # OpenVPN client profile generation if easy-rsa is configured
         if os.path.isdir("/etc/openvpn/easy-rsa") and os.path.isfile("/etc/openvpn/client-common.txt"):
@@ -200,6 +239,7 @@ class UserManager:
         logger.info("Created user %s (valid for %d days, limit %d)", username, days, limit)
         return {"username": username, "password": password, "expiry_date": expiry_date, "limit": str(limit)}
 
+    @account_transaction
     def create_trial_user(
         self, username: str | None = None, password: str | None = None, minutes: int = 60, limit: int = 1
     ) -> dict[str, str]:
@@ -207,17 +247,15 @@ class UserManager:
         if not username:
             username = f"trial{secrets.randbelow(9000) + 1000}"
 
-        if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(
-                f"Invalid username '{username}'. Must be 3-32 alphanumeric characters, dash or underscore."
-            )
-        if minutes < 1:
-            raise ValueError("Trial duration must be a positive integer.")
+        self._validate_username(username)
+        if not 1 <= minutes <= 525600:
+            raise ValueError("Trial duration must be between 1 and 525600 minutes.")
         if limit < 1 or limit > 999:
             raise ValueError("Connection limit must be between 1 and 999.")
 
         if not password:
             password = self.generate_secure_password(10)
+        self._validate_password(password)
 
         now_epoch = int(datetime.datetime.now(datetime.UTC).timestamp())
         exp_epoch = now_epoch + minutes * 60
@@ -227,38 +265,37 @@ class UserManager:
         subprocess.run(cmd_useradd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
         # Set password
-        p = subprocess.Popen(
-            ["chpasswd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        p.communicate(input=f"{username}:{password}")
-
-        # Update databases atomically
-        self._set_user_limit(username, limit)
-        self._set_trial_user(username, exp_epoch, limit)
+        try:
+            self._set_password(username, password)
+            self._set_user_limit(username, limit)
+            self._set_trial_user(username, exp_epoch, limit)
+        except Exception:
+            subprocess.run(["userdel", "-f", username], check=False, capture_output=True)
+            self._remove_from_db(username)
+            self._remove_from_trial_db(username)
+            raise
 
         # Generate cleanup script for atd queueing if supported
         try:
-            cleanup_dir = "/etc/VPSManager/userteste"
+            cleanup_dir = TRIAL_CLEANUP_DIR
             os.makedirs(cleanup_dir, exist_ok=True)
             cleanup_script = os.path.join(cleanup_dir, f"{username}.sh")
             with open(cleanup_script, "w", encoding="utf-8") as f:
-                f.write(
-                    f"#!/usr/bin/env bash\n"
-                    f"pkill -u {username} 2>/dev/null || true\n"
-                    f"userdel -f {username} 2>/dev/null || true\n"
-                    f"rm -f {cleanup_script}\n"
-                )
-            os.chmod(cleanup_script, 0o755)
+                f.write("#!/usr/bin/env bash\nexec /opt/axiom/.venv/bin/axiom user purge-expired\n")
+            os.chmod(cleanup_script, 0o700)
             subprocess.run(
                 ["at", f"now + {minutes} min"],
                 input=cleanup_script,
                 text=True,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                check=False,
+                check=True,
             )
         except Exception:
-            pass
+            subprocess.run(["userdel", "-f", username], check=False, capture_output=True)
+            self._remove_from_db(username)
+            self._remove_from_trial_db(username)
+            raise RuntimeError("Trial expiration could not be scheduled; account rolled back") from None
 
         logger.info("Created trial user %s (valid for %d minutes, limit %d)", username, minutes, limit)
         return {
@@ -269,32 +306,28 @@ class UserManager:
             "limit": str(limit),
         }
 
+    @account_transaction
     def change_password(self, username: str, new_password: str | None = None) -> str:
         """Changes user password silently via chpasswd and disconnects existing sessions."""
-        if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(f"Invalid username '{username}'.")
+        self._require_managed(username)
 
         if not new_password:
             new_password = self.generate_secure_password()
-        elif len(new_password) < 8:
-            raise ValueError("Password must be at least 8 characters long.")
+        self._validate_password(new_password)
 
         # Disconnect active sessions
         subprocess.run(["pkill", "-u", username], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
 
         # Apply password update
-        p = subprocess.Popen(
-            ["chpasswd"], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-        )
-        p.communicate(input=f"{username}:{new_password}")
+        self._set_password(username, new_password)
 
         logger.info("Updated password for user %s", username)
         return new_password
 
+    @account_transaction
     def change_limit(self, username: str, new_limit: int) -> bool:
         """Updates user connection limit in database."""
-        if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(f"Invalid username '{username}'.")
+        self._require_managed(username)
         if new_limit < 1 or new_limit > 999:
             raise ValueError("Connection limit must be between 1 and 999.")
 
@@ -311,10 +344,10 @@ class UserManager:
         logger.info("Updated connection limit for user %s to %d", username, new_limit)
         return True
 
+    @account_transaction
     def change_expiration(self, username: str, days: int | None = None, date_str: str | None = None) -> str:
         """Modifies user expiration date using relative days or absolute YYYY-MM-DD string."""
-        if not re.match(r"^[a-zA-Z0-9_-]{3,32}$", username):
-            raise ValueError(f"Invalid username '{username}'.")
+        self._require_managed(username)
 
         if days is not None:
             if days < 1:
@@ -366,12 +399,15 @@ class UserManager:
             except Exception:
                 pass
 
-            if uid is not None and uid < 1000:
+            if uid is None:
+                raise PermissionError("Cannot verify system account identity; refusing mutation") from None
+            if uid < 1000:
                 raise PermissionError(f"Cannot delete protected system user '{username}' (UID: {uid}).") from None
 
+    @account_transaction
     def delete_user(self, username: str) -> bool:
         """Kills active sessions, revokes OpenVPN certs, and deletes user with system protection."""
-        self._check_system_user_protection(username)
+        self._require_managed(username)
 
         try:
             # Terminate user processes
@@ -427,6 +463,7 @@ class UserManager:
             logger.error("Failed to delete user %s: %s", username, e)
             return False
 
+    @account_transaction
     def purge_expired(self) -> list[str]:
         """Scans managed and trial databases and purges all expired user accounts."""
         purged = []
@@ -442,7 +479,7 @@ class UserManager:
             exp_str = info.get("expiry_date", "never")
             if exp_str and exp_str.lower() != "never":
                 try:
-                    # Account expires at 23:59:59 of the given date
+                    # Linux account expiry starts at midnight on the expiry date.
                     exp_date = datetime.datetime.strptime(exp_str, "%b %d, %Y")
                 except ValueError:
                     try:
@@ -451,10 +488,10 @@ class UserManager:
                         exp_date = None
 
                 if exp_date:
-                    exp_date_end = exp_date.replace(hour=23, minute=59, second=59, tzinfo=datetime.UTC)
-                    if now_dt > exp_date_end:
+                    exp_date_end = exp_date.replace(tzinfo=datetime.UTC)
+                    if now_dt >= exp_date_end:
                         try:
-                            if self.delete_user(username):
+                            if self.delete_user.__wrapped__(self, username):
                                 purged.append(username)
                         except Exception as err:
                             logger.error("Error deleting expired user %s: %s", username, err)
@@ -468,7 +505,7 @@ class UserManager:
                 exp_epoch = int(trial["expiration_epoch"])
                 if now_epoch >= exp_epoch:
                     try:
-                        if self.delete_user(username):
+                        if self.delete_user.__wrapped__(self, username):
                             purged.append(username)
                     except Exception as err:
                         logger.error("Error deleting expired trial user %s: %s", username, err)

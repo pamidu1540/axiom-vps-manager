@@ -3,6 +3,8 @@ Axiom Async Telegram Bot Module
 Built on python-telegram-bot v22.8 (Bot API 9.6) with non-blocking async architecture.
 """
 
+import asyncio
+import html
 import logging
 import os
 import sys
@@ -51,11 +53,17 @@ class AxiomTelegramBot:
     def is_authorized(self, user_id: int | None) -> bool:
         """Checks if the given user ID has administrator privileges."""
         if self.admin_id is None:
-            return True
+            return False
         return user_id is not None and user_id == self.admin_id
 
     async def start_command(self, update: Update, context: ContextTypes.DEFAULT_TYPE if ContextTypes else None):
         """Handles /start command with interactive inline menu."""
+        if not self.is_authorized(update.effective_user.id if update.effective_user else None):
+            await update.message.reply_text("Access denied: administrator authorization required.")
+            return
+        if update.effective_chat.type != "private":
+            await update.message.reply_text("Use a private chat with this bot.")
+            return
         keyboard = [
             [InlineKeyboardButton("📊 System Status", callback_data="status")],
             [InlineKeyboardButton("⚡ Create Trial User", callback_data="create_trial")],
@@ -76,9 +84,11 @@ class AxiomTelegramBot:
         await query.answer()
 
         user_id = update.effective_user.id if update.effective_user else None
+        if not self.is_authorized(user_id) or update.effective_chat.type != "private":
+            return
 
         if query.data == "status":
-            metrics = SystemMonitor.get_system_metrics()
+            metrics = await asyncio.to_thread(SystemMonitor.get_system_metrics)
             text = (
                 f"<b>📊 Server Status</b>\n"
                 f"• <b>RAM:</b> {metrics['mem_used_mb']}MB / {metrics['mem_total_mb']}MB ({metrics['mem_percent']}%)\n"
@@ -88,13 +98,12 @@ class AxiomTelegramBot:
             await query.edit_message_text(text, parse_mode="HTML")
 
         elif query.data == "create_trial":
-            user_suffix = user_id % 10000 if user_id else 1
-            user_data = self.user_manager.create_user(f"trial_{user_suffix}", days=1, limit=1)
+            user_data = await asyncio.to_thread(self.user_manager.create_trial_user)
             text = (
                 f"✅ <b>Trial Account Created</b>\n\n"
                 f"• <b>Username:</b> <code>{user_data['username']}</code>\n"
-                f"• <b>Password:</b> <code>{user_data['password']}</code>\n"
-                f"• <b>Expires:</b> {user_data['expiry_date']}\n"
+                f"• <b>Password:</b> <code>{html.escape(user_data['password'])}</code>\n"
+                f"• <b>Valid for:</b> {user_data['duration_minutes']} minutes\n"
                 f"• <b>Connection Limit:</b> {user_data['limit']}"
             )
             await query.edit_message_text(text, parse_mode="HTML")
@@ -107,7 +116,7 @@ class AxiomTelegramBot:
                 )
                 return
 
-            users = self.user_manager.list_users()
+            users = await asyncio.to_thread(self.user_manager.list_users)
             user_text = "\n".join([f"• <code>{u['username']}</code> (Limit: {u['limit']})" for u in users[:20]])
             await query.edit_message_text(
                 f"<b>👥 Active Accounts ({len(users)})</b>\n\n{user_text or 'No accounts found.'}", parse_mode="HTML"
@@ -115,6 +124,8 @@ class AxiomTelegramBot:
 
     def run(self):
         """Starts the async polling bot daemon."""
+        if not self.admin_id or self.admin_id < 1:
+            raise ValueError("Set AXIOM_BOT_ADMIN_ID to your positive Telegram user ID")
         if not PTB_AVAILABLE:
             logger.error("python-telegram-bot is not installed. Install via pip install python-telegram-bot")
             return

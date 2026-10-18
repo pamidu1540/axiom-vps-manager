@@ -1,0 +1,7 @@
+include README.md LICENSE CREDITS.md CHANGELOG.md requirements.txt install.sh uninstall.sh
+recursive-include config *.toml
+recursive-include systemd *.service *.timer
+recursive-include web *.html *.css *.js
+recursive-include tests *.py
+prune .tools
+prune .venv

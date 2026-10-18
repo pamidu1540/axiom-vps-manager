@@ -3,6 +3,7 @@ Axiom nftables Firewall Manager
 Manages isolated nftables chains for ports, rate limits, and GeoIP filters without flushing base system rules.
 """
 
+import ipaddress
 import logging
 import subprocess
 
@@ -28,6 +29,7 @@ table inet axiom {
 
         # Drop invalid packets
         ct state invalid drop
+        ip saddr @banned_ips drop
 
         # Rate-limiting SSH brute-force (max 10 new connections / min per IP)
         tcp dport 22 ct state new meter ssh_meter { ip saddr limit rate 10/minute } accept
@@ -68,6 +70,9 @@ class NFTablesManager:
 
     def ban_ip(self, ip_address: str, timeout_seconds: int = 3600) -> bool:
         """Adds an IP address to the temporary ban set."""
+        ip_address = str(ipaddress.IPv4Address(ip_address))
+        if not 1 <= timeout_seconds <= 604800:
+            raise ValueError("Ban duration must be between 1 and 604800 seconds")
         cmd = ["nft", "add", "element", "inet", "axiom", "banned_ips", f"{{ {ip_address} timeout {timeout_seconds}s }}"]
         res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         return res.returncode == 0

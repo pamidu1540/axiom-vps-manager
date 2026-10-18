@@ -1,0 +1,13 @@
+[Unit]
+Description=Axiom local authenticated management API
+After=network.target
+
+[Service]
+EnvironmentFile=/etc/axiom/axiom.env
+ExecStart=/opt/axiom/.venv/bin/axiom api
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

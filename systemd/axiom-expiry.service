@@ -1,0 +1,7 @@
+[Unit]
+Description=Remove expired Axiom managed accounts
+
+[Service]
+Type=oneshot
+ExecStart=/opt/axiom/.venv/bin/axiom user purge-expired
+UMask=0077

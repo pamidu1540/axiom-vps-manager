@@ -6,6 +6,7 @@ Generates VLESS + REALITY configuration profiles for censorship circumvention.
 import logging
 import uuid
 from typing import Any
+from urllib.parse import urlencode
 
 logger = logging.getLogger("AxiomXray")
 
@@ -51,8 +52,23 @@ class XrayService:
         self, client_uuid: str, server_ip: str, public_key: str, short_id: str, sni: str = "www.google.com"
     ) -> str:
         """Constructs a VLESS Reality sharing URI."""
-        return (
-            f"vless://{client_uuid}@{server_ip}:{self.port}?"
-            f"encryption=none&flow=xtls-rprx-vision&security=reality&sni={sni}&"
-            f"fp=chrome&pbk={public_key}&sid={short_id}&type=tcp#Axiom-VLESS-Reality"
+        client_uuid = str(uuid.UUID(client_uuid))
+        if not server_ip or any(c in server_ip for c in "\r\n/@?#"):
+            raise ValueError("Invalid server hostname or IP")
+        if not public_key or not short_id:
+            raise ValueError("Server public key and short ID are required")
+        if ":" in server_ip and not server_ip.startswith("["):
+            server_ip = f"[{server_ip}]"
+        query = urlencode(
+            {
+                "encryption": "none",
+                "flow": "xtls-rprx-vision",
+                "security": "reality",
+                "sni": sni,
+                "fp": "chrome",
+                "pbk": public_key,
+                "sid": short_id,
+                "type": "tcp",
+            }
         )
+        return f"vless://{client_uuid}@{server_ip}:{self.port}?{query}#Axiom-VLESS-Reality"

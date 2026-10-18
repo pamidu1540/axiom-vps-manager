@@ -1,146 +1,103 @@
-<div align="center">
+# Axiom VPS Manager
 
-# ⚡ Axiom VPS Manager ⚡
-**Modern, Secure, High-Performance VPS Tunneling & Management Platform**
+Experimental Linux VPS administration toolkit built with Python and Bash. For testing and educational use on servers you own or are authorized to administer. GPL-3.0-or-later.
 
-[![Version](https://img.shields.io/badge/version-v1.0.3-blue.svg?style=for-the-badge)](https://github.com/pamidu1540/axiom-vps-manager/releases/tag/v1.0.3)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-green.svg?style=for-the-badge)](LICENSE)
-[![Bash](https://img.shields.io/badge/Bash-5.0%2B-black.svg?style=for-the-badge&logo=gnu-bash)](https://gnu.org/software/bash)
-[![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-yellow.svg?style=for-the-badge&logo=python)](https://python.org)
-[![Ubuntu 22.04 | 24.04](https://img.shields.io/badge/Ubuntu-22.04%20|%2024.04%20LTS-orange.svg?style=for-the-badge&logo=ubuntu)](https://ubuntu.com)
-[![Debian 12 | 13](https://img.shields.io/badge/Debian-12%20|%2013-red.svg?style=for-the-badge&logo=debian)](https://debian.org)
-[![WireGuard](https://img.shields.io/badge/WireGuard-VPN-88171a.svg?style=for-the-badge&logo=wireguard)](https://wireguard.com)
-[![OpenVPN](https://img.shields.io/badge/OpenVPN-TLS-ea7125.svg?style=for-the-badge&logo=openvpn)](https://openvpn.net)
-[![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-2ca5e0.svg?style=for-the-badge&logo=telegram)](https://telegram.org)
+## What works
 
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-quick-install">Quick Install</a> •
-  <a href="#-protocols--services">Protocols</a> •
-  <a href="#-security-hardening">Security</a> •
-  <a href="#-credits">Credits</a>
-</p>
+- CLI for managed Linux accounts: create, list, revoke and purge expired accounts.
+- Administrator-only Telegram bot for telemetry, account listing and temporary accounts.
+- Authenticated local API and read-only web dashboard using real server data.
+- Root-only configuration archives with safe extraction checks. **Archives are not encrypted.**
+- WireGuard profile generation using installed `wg` tools and an existing server public key.
+- Xray URI generation for clients already configured on a server.
+- Basic nftables SSH rate limiting and temporary IPv4 bans; limited configuration checks.
 
-</div>
+This project does not automatically deploy or configure WireGuard, Xray, Hysteria, sing-box, OpenVPN, Caddy or a complete firewall. Protocol configuration helpers are experimental. Connection limits are recorded as metadata; the Python toolkit does not enforce concurrent sessions. Language files and older `Modulos/` scripts are retained for reference and are not installed by the current installer.
 
----
+## Install on a disposable Linux server
 
-## 🚀 Overview
-
-**Axiom VPS Manager** is an enterprise-grade, completely hardened suite designed to transform any Debian or Ubuntu VPS into a multi-protocol proxy, VPN, and secure tunneling server. Built with zero-telemetry privacy principles, strict modern cryptography, asynchronous Python 3.14 core services, and native `nftables` firewalling.
-
----
-
-## ✨ Features
-
-### 🛡️ Protocols & Tunneling
-- **WireGuard**: Kernel-level VPN with instant QR code client profile provisioning.
-- **Xray-core (VLESS + REALITY)**: State-of-the-art censorship circumvention mimicking authentic TLS websites.
-- **Hysteria 2**: High-throughput UDP/QUIC proxy with custom obfuscation for lossy or congested networks.
-- **sing-box**: Universal proxy core with unified routing and multi-inbound support.
-- **OpenSSH & Dropbear**: Port multiplexing, connection limit enforcement, and banner customization.
-- **WebSocket & HTTP/1.1 Upgrade**: Python 3.14 async HTTP and WebSocket proxies for CDN payload forwarding.
-- **OpenVPN**: Auto-configured PKI via Easy-RSA with secure PAM authentication.
-- **BadVPN (`badvpn-udpgw`)**: UDP forwarding daemon on port 7300 for gaming and VoIP over TCP SSH.
-- **SlowDNS**: High-performance DNS tunneling daemon over UDP 5300.
-
-### 🔒 Security & Privacy Hardening
-- **Zero Telemetry**: No third-party logging, no hidden trackers, no phone-home mechanisms.
-- **Modern Cryptography**: Argon2id & SHA-512 password hashing; on-demand asymmetric keypair generation at installation.
-- **Native `nftables` Firewall**: Isolated named chains preventing accidental system rule flushes.
-- **Fail2ban Integration**: Automated multi-protocol brute-force mitigation.
-- **Encrypted Backups**: Local AES-256 / `age` encryption for all server configurations and user databases (no unauthenticated HTTP exposures).
-- **Audit Logging**: Comprehensive JSON-formatted audit trail located at `/var/log/axiom/audit.log`.
-- **Systemd Native**: All services run as isolated systemd units and timers with memory and CPU quota limits.
-
-### 📊 Management & TUI
-- **Rich Terminal UI**: Real-time terminal dashboard with CPU/RAM/Disk gauges, live connection tables, and service states.
-- **Async Telegram Bot**: Full reseller and admin management bot built on `python-telegram-bot v22.8` with inline buttons and interactive conversation wizards.
-- **Bandwidth Accounting**: Per-user and per-interface traffic statistics powered by `vnStat`.
-- **Internationalization (i18n)**: Multi-language support (English, Portuguese `pt-BR`, Sinhala `si`).
-
----
-
-## 📦 System Requirements
-
-| Parameter | Minimum Requirement | Recommended |
-|-----------|--------------------|-------------|
-| **Operating System** | Ubuntu 22.04 LTS, Ubuntu 24.04 LTS, Debian 12 (Bookworm) | Ubuntu 24.04 LTS / Debian 12 |
-| **Linux Kernel** | 5.15+ (WireGuard built-in) | 6.5+ |
-| **Architecture** | `x86_64` (amd64) / `aarch64` (arm64) | `x86_64` |
-| **Memory (RAM)** | 512 MB | 1 GB+ |
-| **Disk Space** | 2 GB free | 5 GB+ |
-
----
-
-## ⚡ Quick Install
-
-Run the secure installer as `root`:
+Target environments: Ubuntu 24.04 or Debian 12/13, Python 3.11+, systemd. Native Windows installation is not supported. The installer requires root and network access for apt and Python dependencies. Review the source before running it.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/pamidu1540/axiom-vps-manager/main/install.sh -o install.sh && bash install.sh
-```
-
-### Main CLI Command
-Once installed, access the interactive dashboard anytime by running:
-```bash
-axiom
-```
-Or use the direct CLI command interface:
-```bash
+git clone https://github.com/pamidu1540/axiom-vps-manager.git
+cd axiom-vps-manager
+sudo bash install.sh
 axiom --help
-axiom user create <username> --days 30 --limit 2
-axiom wireguard add-client <name> --qr
-axiom xray add-client <name> --qr
-axiom backup create --encrypt
 ```
 
----
+The installer creates `/opt/axiom` with a private Python environment and commands under `/usr/local/bin`. It enables `atd` for trial expiry and `axiom-expiry.timer` to check expiry every minute. It does not change SSH authentication, firewall rules, login profiles or existing accounts. Network services remain disabled until configured explicitly. Installation failures stop with visible errors; inspect a partial installation before retrying.
 
-## 🏗️ Architecture
+### Existing installations
 
-```mermaid
-graph TD
-    User([Client / User]) -->|SSH / TLS 443| Caddy[Caddy Reverse Proxy & Auto-HTTPS]
-    User -->|WireGuard UDP 51820| WG[WireGuard Kernel Module]
-    User -->|VLESS / REALITY 443| Xray[Xray-core Engine]
-    User -->|Hysteria 2 UDP 8443| Hy2[Hysteria 2 QUIC Daemon]
-    
-    Caddy -->|WebSocket Upgrade| WSProxy[Axiom Async WS Proxy :8080]
-    WSProxy -->|Forward| SSH[OpenSSH Server :22]
-    
-    subgraph Core Management
-        CLI[Axiom CLI / Rich TUI]
-        Bot[Axiom Async Telegram Bot]
-        Timer[Systemd Limiter & Expiry Timers]
-    end
+The installer refuses to overwrite `/opt/axiom` or existing command names. There is no automatic migration from the legacy installer. Back up `/opt/axiom`, `/etc/axiom`, `/etc/VPSManager`, `/root/usuarios.db`, protocol configuration and existing service/cron settings first. Audit old root-login changes, global symlinks, watchdog cron jobs and running legacy services manually. Replacing the application does not undo those settings. Do not run the old uninstaller to clean up a production host.
 
-    subgraph Security & Monitoring
-        NFT[nftables Filter & Rate Limiter]
-        F2B[Fail2ban Jail Monitor]
-        VN[vnStat Bandwidth Collector]
-    end
+## CLI
 
-    CLI --> NFT & F2B & VN
-    Bot --> CLI
-    Timer --> CLI
+```bash
+axiom                         # one-shot telemetry summary
+axiom user create example --days 30 --limit 2
+axiom user list
+axiom user delete example
+axiom user purge-expired
+axiom bandwidth
+axiom scan
+axiom backup create
+axiom backup list
 ```
 
----
+Generated passwords appear once in the CLI output. Keep terminal recordings private. Passwords go to `chpasswd` through stdin and are not stored by the Python manager. Account mutations require Linux root privileges and operate only on managed accounts; system accounts are protected. Python mutations are serialized with a file lock. Legacy scripts do not participate in that lock; do not run both account managers together. Trials require a functioning `atd` and the installed `/opt/axiom/.venv/bin/axiom`; the expiry timer is an additional check. Expiry processing can be delayed by service downtime.
 
-## 📜 License
+### Profile generation
 
-This project is open-source software licensed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE).
+```bash
+axiom wireguard add-client example --address 10.66.66.2/32 --endpoint vpn.example.com --qr
+axiom xray add-client example --uuid YOUR_EXISTING_UUID --server vpn.example.com --public-key YOUR_SERVER_PUBLIC_KEY --short-id YOUR_SHORT_ID --qr
+```
 
----
+WireGuard requires `wireguard-tools` and `/etc/wireguard/server_public.key`. Allocate a unique address and register the returned public key on your server yourself. The generated profile routes IPv4 only. Xray produces a sharing URI for an existing server client; neither command provisions or restarts a protocol server. Profiles and QR codes contain access credentials; share privately.
 
-## 💐 Credits
+## API and web dashboard
 
-See [CREDITS.md](CREDITS.md) for full attribution to all upstream contributors, maintainers, and open-source libraries.
+Set `AXIOM_API_KEY` through your secret manager to a random value of at least 32 characters, then run:
 
----
+```bash
+axiom api --port 8000
+```
 
-## 🏷️ Topics & Tags
+The server binds to `127.0.0.1`. For a remote VPS, forward it over SSH:
 
-`vps-manager` • `vpn-server` • `ssh-tunnel` • `openvpn` • `badvpn` • `slowdns` • `dropbear` • `squid-proxy` • `websocket-proxy` • `telegram-bot` • `linux-vps` • `wireguard` • `xray` • `hysteria2` • `proxy-server` • `networking-tools` • `debian` • `ubuntu` • `axiom`
+```bash
+ssh -L 8000:127.0.0.1:8000 admin@your-server
+```
+
+Open `http://127.0.0.1:8000` locally and enter your key. It stays in page memory until disconnect/reload; it is not saved to browser storage. The dashboard is read-only. API endpoints require the `X-API-Key` header: `GET /api/v1/status`, `GET/POST /api/v1/users`, `DELETE /api/v1/users/{username}`, and `GET /api/v1/security/audit`. User creation accepts `username`, `days` and `limit` query parameters and returns the generated credential. Do not expose this root-privileged management API directly to the Internet.
+
+To use systemd, provide a root-owned mode `0600` environment file at `/etc/axiom/axiom.env` through your secret manager, containing the actual environment assignments. Do not place real keys in this repository. Enable only the services you configure:
+
+```bash
+sudo systemctl enable --now axiom-api.service
+```
+
+## Telegram
+
+Configure `AXIOM_BOT_TOKEN` and positive numeric `AXIOM_BOT_ADMIN_ID` through environment variables or the root-only service environment file. Then run `axiom bot` or explicitly enable `axiom-bot.service`. Missing admin configuration fails closed. All management actions require the configured administrator and a private chat. `/start` opens status, trial creation and account-list actions. Trial credentials are sent only in that private admin chat.
+
+## Backups and uninstall
+
+Archives under `/root/backups` preserve original paths relative to `/` (for example `etc/axiom/axiom.toml`) with directory mode `0700` and file mode `0600`. Links and special files are excluded. They contain sensitive data and **are not encrypted**. Encrypt them with your backup tooling before transferring them elsewhere. Automatic retention and remote backup are not implemented. To enable daily local archives explicitly: `sudo systemctl enable --now axiom-backup.timer`.
+
+The Python `BackupEngine.restore_backup()` supports inspected archives and defaults to the original filesystem root. Restore into a temporary directory first; it rejects traversal, links, special files and Python versions lacking safe extraction filters. There is no CLI restore command or automatic restoration of system passwords, protocol services or running state.
+
+`sudo axiom-uninstall` removes the current application and its unmodified units/owned symlinks. It preserves configuration, logs, archives and Linux accounts. Expiry timers stop, so remove or manage remaining accounts explicitly. Modified service units require manual review before removal. Legacy installation cleanup is separate.
+
+## Development
+
+```bash
+uv sync --extra dev --locked
+uv run pytest
+uv run ruff check src tests
+```
+
+Regression checks mock account-management commands; they never create or delete real users. Full installation and networking must be verified separately on a disposable Linux VM. The scanner performs a limited set of local checks; it does not certify server security.
+
+See [CHANGELOG.md](CHANGELOG.md) and [CREDITS.md](CREDITS.md). Some development and refinement used AI assistance. The educational-use notice describes intended use and does not restrict the GPL license.

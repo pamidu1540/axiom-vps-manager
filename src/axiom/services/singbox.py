@@ -15,7 +15,9 @@ class SingboxService:
         config = {
             "log": {"level": "warn", "timestamp": True},
             "experimental": {"clash_api": {"external_controller": f"127.0.0.1:{self.clash_api_port}"}},
-            "inbounds": inbounds or [{"type": "mixed", "tag": "mixed-in", "listen": "::", "listen_port": 1080}],
+            "inbounds": inbounds
+            if inbounds is not None
+            else [{"type": "mixed", "tag": "mixed-in", "listen": "127.0.0.1", "listen_port": 1080}],
             "outbounds": [{"type": "direct", "tag": "direct"}, {"type": "block", "tag": "block"}],
             "route": {"rules": [{"protocol": "dns", "outbound": "direct"}]},
         }

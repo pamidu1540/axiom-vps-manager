@@ -4,7 +4,8 @@ After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/opt/axiom/Modulos/userbackup 1
+ExecStart=/opt/axiom/.venv/bin/axiom backup create
+UMask=0077
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=axiom-backup

@@ -20,12 +20,12 @@ from axiom.users.manager import UserManager
 
 def main():
     parser = argparse.ArgumentParser(
-        prog="axiom", description="⚡ Axiom VPS Manager — Modern, Secure Tunneling & VPS Management Platform"
+        prog="axiom", description="Axiom VPS Manager — experimental Linux administration toolkit"
     )
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     # TUI Menu (default if no args)
-    subparsers.add_parser("menu", help="Launch interactive Rich TUI dashboard")
+    subparsers.add_parser("menu", help="Show a one-shot telemetry summary")
 
     # User Management
     user_parser = subparsers.add_parser("user", help="User account management")
@@ -44,6 +44,7 @@ def main():
 
     # user list
     user_sub.add_parser("list", help="List all users")
+    user_sub.add_parser("purge-expired", help="Remove expired managed accounts")
 
     # Firewall
     fw_parser = subparsers.add_parser("firewall", help="nftables firewall control")
@@ -54,22 +55,32 @@ def main():
     subparsers.add_parser("scan", help="Run automated security audit and vulnerability check")
 
     # Backup & Disaster Recovery
-    backup_parser = subparsers.add_parser("backup", help="Manage local encrypted backups")
+    backup_parser = subparsers.add_parser("backup", help="Manage local root-only archives (not encrypted)")
     backup_sub = backup_parser.add_subparsers(dest="backup_action")
-    backup_sub.add_parser("create", help="Create a timestamped encrypted backup")
+    backup_sub.add_parser("create", help="Create a timestamped root-only archive")
     backup_sub.add_parser("list", help="List available backup archives")
+    api_parser = subparsers.add_parser("api", help="Start authenticated local REST API")
+    api_parser.add_argument("--port", type=int, default=8000)
 
     # WireGuard
     wg_parser = subparsers.add_parser("wireguard", help="WireGuard VPN management")
     wg_sub = wg_parser.add_subparsers(dest="wg_action")
     wg_create = wg_sub.add_parser("add-client", help="Generate client profile")
     wg_create.add_argument("name", help="Client name")
+    wg_create.add_argument("--address", required=True, help="Unique client CIDR address")
+    wg_create.add_argument("--endpoint", required=True, help="Public server hostname or IP")
+    wg_create.add_argument("--qr", action="store_true", help="Print a terminal QR code")
 
     # Xray VLESS Reality
     xray_parser = subparsers.add_parser("xray", help="Xray VLESS Reality management")
     xray_sub = xray_parser.add_subparsers(dest="xray_action")
     xray_create = xray_sub.add_parser("add-client", help="Generate VLESS Reality client URI")
     xray_create.add_argument("name", help="Client name")
+    xray_create.add_argument("--uuid", required=True, help="Existing server client UUID")
+    xray_create.add_argument("--server", required=True)
+    xray_create.add_argument("--public-key", required=True)
+    xray_create.add_argument("--short-id", required=True)
+    xray_create.add_argument("--qr", action="store_true")
 
     # Bandwidth Stats
     subparsers.add_parser("bandwidth", help="Display network interface bandwidth metrics")
@@ -85,20 +96,16 @@ def main():
     args = parser.parse_args()
 
     if not args.command or args.command == "menu":
-        menu_sh = "/opt/axiom/Modulos/menu"
-        if not os.path.exists(menu_sh):
-            candidate = os.path.join(
-                os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "Modulos", "menu"
-            )
-            if os.path.exists(candidate):
-                menu_sh = candidate
-        if os.path.exists(menu_sh) and sys.platform != "win32":
-            os.execv("/bin/bash", ["bash", menu_sh])
         dashboard = Dashboard()
         dashboard.render()
         return
 
     user_mgr = UserManager()
+    if args.command == "api":
+        from axiom.api.server import start_api_server
+
+        start_api_server(port=args.port)
+        return
 
     if args.command == "bot":
         from axiom.config import load_config
@@ -126,7 +133,7 @@ def main():
 
         if not token:
             print("❌ No Telegram Bot Token provided. Set AXIOM_BOT_TOKEN or configure axiom.toml.")
-            return
+            raise ValueError("Telegram bot token is required")
 
         bot = AxiomTelegramBot(token=token, admin_id=admin_id)
         bot.run()
@@ -145,7 +152,10 @@ def main():
             if user_mgr.delete_user(args.username):
                 print(f"✅ User '{args.username}' deleted.")
             else:
-                print(f"❌ Failed to delete user '{args.username}'.")
+                raise RuntimeError(f"Failed to delete user '{args.username}'")
+        elif args.user_action == "purge-expired":
+            for username in user_mgr.purge_expired():
+                print(f"Removed expired account: {username}")
         elif args.user_action == "list":
             users = user_mgr.list_users()
             print(f"Active Users ({len(users)}):")
@@ -161,7 +171,7 @@ def main():
             if nft.apply_base_firewall():
                 print("✅ nftables base rules applied successfully.")
             else:
-                print("❌ Failed to apply nftables rules.")
+                raise RuntimeError("Failed to apply nftables rules")
 
     elif args.command == "scan":
         print("🔍 Running Axiom Security Audit Scanner...\n")
@@ -172,7 +182,7 @@ def main():
         for f in report["findings"]:
             print(f" [{f['severity']}] {f['title']}: {f['detail']}")
         if not report["findings"]:
-            print(" ✔ No security vulnerabilities detected.")
+            print("No findings from the implemented checks; this is not a comprehensive security audit.")
 
     elif args.command == "backup":
         if not getattr(args, "backup_action", None):
@@ -182,9 +192,9 @@ def main():
         if args.backup_action == "create":
             path = engine.create_backup()
             if path:
-                print(f"✅ Encrypted backup created: {path}")
+                print(f"✅ Root-only backup created (not encrypted): {path}")
             else:
-                print("❌ Backup creation failed.")
+                raise RuntimeError("Backup creation failed")
         elif args.backup_action == "list":
             backups = engine.list_backups()
             print(f"Available Backups ({len(backups)}):")
@@ -197,11 +207,13 @@ def main():
             return
         if args.wg_action == "add-client":
             wg = WireGuardService()
-            res = wg.add_client(args.name)
+            res = wg.add_client(args.name, args.address, args.endpoint)
             print(f"✅ WireGuard Client '{args.name}' Profile:\n")
             print(res["config"])
-            print("\nQR Code:")
-            print(QRCodeGenerator.generate_terminal_qr(res["config"]))
+            print(f"Register this peer on the server before use: {res['public_key']}")
+            print("This command generates a profile; it does not modify the server peer list.")
+            if args.qr:
+                print(QRCodeGenerator.generate_terminal_qr(res["config"]))
 
     elif args.command == "xray":
         if not getattr(args, "xray_action", None):
@@ -209,11 +221,11 @@ def main():
             return
         if args.xray_action == "add-client":
             xray = XrayService()
-            uri = xray.generate_client_uri(
-                "12345678-1234-1234-1234-123456789abc", "127.0.0.1", "sample_public_key", "sample_id"
-            )
+            uri = xray.generate_client_uri(args.uuid, args.server, args.public_key, args.short_id)
             print(f"✅ Xray VLESS Reality URI:\n{uri}\n")
-            print(QRCodeGenerator.generate_terminal_qr(uri))
+            print("URI only; the client must already be configured in Xray.")
+            if args.qr:
+                print(QRCodeGenerator.generate_terminal_qr(uri))
 
     elif args.command == "bandwidth":
         stats = BandwidthMonitor.get_interface_stats()
@@ -227,10 +239,18 @@ def main():
         if not os.path.exists(uninstall_script):
             uninstall_script = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "uninstall.sh")
         if os.path.exists(uninstall_script):
-            subprocess.run(["bash", uninstall_script])
+            subprocess.run(["bash", uninstall_script], check=True)
         else:
             print("❌ uninstall.sh not found.")
 
 
+def entrypoint():
+    try:
+        main()
+    except (ValueError, RuntimeError, OSError, subprocess.SubprocessError) as exc:
+        print(f"Axiom: {exc}", file=sys.stderr)
+        raise SystemExit(1) from None
+
+
 if __name__ == "__main__":
-    main()
+    entrypoint()

@@ -32,12 +32,10 @@ class Dashboard:
             )
             print(f"Online Users: {metrics['online_users']}")
             print("========================================")
-            print("[1] User Management    [4] Security & Firewall")
-            print("[2] Protocols & Tunnels [5] System Maintenance")
-            print("[3] Backup & Restore   [0] Exit")
+            print("Run axiom --help for management commands.")
             return
 
-        table = Table(title="⚡ Axiom VPS Manager v1.0.0 ⚡", expand=True)
+        table = Table(title="⚡ Axiom VPS Manager v1.0.4 ⚡", expand=True)
         table.add_column("Resource", style="cyan", justify="left")
         table.add_column("Value / Usage", style="green", justify="right")
         table.add_column("Status", style="magenta", justify="center")
@@ -51,10 +49,4 @@ class Dashboard:
         table.add_row("Active SSH Users", str(metrics["online_users"]), "Online")
 
         self.console.print(table)
-        self.console.print(
-            "\n[bold yellow][1][/bold yellow] User Management    [bold yellow][4][/bold yellow] Security & Firewall"
-        )
-        self.console.print(
-            "[bold yellow][2][/bold yellow] Protocols & Tunnels [bold yellow][5][/bold yellow] System Maintenance"
-        )
-        self.console.print("[bold yellow][3][/bold yellow] Backup & Recovery   [bold red][0][/bold red] Exit\n")
+        self.console.print("Run axiom --help for management commands.")

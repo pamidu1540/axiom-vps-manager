@@ -18,11 +18,13 @@ class HysteriaService:
         self, auth_passwords: list[str], tls_cert: str = "/etc/caddy/axiom.crt", tls_key: str = "/etc/caddy/axiom.key"
     ) -> dict[str, Any]:
         """Builds Hysteria 2 server configuration dictionary."""
+        if len(auth_passwords) != 1 or not auth_passwords[0]:
+            raise ValueError("Supply exactly one nonempty Hysteria authentication password")
         config = {
             "listen": f":{self.port}",
             "tls": {"cert": tls_cert, "key": tls_key},
             "obfs": {"type": "salamander", "salamander": {"password": self.obfs_password}},
-            "auth": {"type": "password", "password": auth_passwords[0] if auth_passwords else "default_secret"},
+            "auth": {"type": "password", "password": auth_passwords[0]},
             "bandwidth": {"up": f"{self.up_mbps} mbps", "down": f"{self.down_mbps} mbps"},
         }
         return config

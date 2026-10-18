@@ -6,7 +6,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 EnvironmentFile=-/etc/axiom/axiom.env
-ExecStart=/usr/bin/python3 -m axiom.telegram.bot
+ExecStart=/opt/axiom/.venv/bin/python -m axiom.telegram.bot
+UMask=0077
 Restart=always
 RestartSec=5
 StandardOutput=journal

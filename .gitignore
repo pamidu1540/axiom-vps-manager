@@ -23,6 +23,11 @@ root/backups/
 
 # Local testing & agent artifacts
 .agents/
-tests/
+build/
+dist/
+*.egg-info/
+.env
+.env.*
+.tools/
 *.log
 *.tmp

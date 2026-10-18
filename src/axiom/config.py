@@ -25,7 +25,7 @@ def load_config(custom_path: str | None = None) -> dict[str, Any]:
                 return tomllib.load(f)
 
     return {
-        "axiom": {"version": "1.0.0", "language": "en"},
+        "axiom": {"version": "1.0.4", "language": "en"},
         "ssh": {"enabled": True, "port": 22},
         "firewall": {"backend": "nftables"},
     }
